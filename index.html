@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C6 SD Browser</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --fg: #1a1d21; --muted: #5f6672; --line: #e2e5ea;
+    --accent: #2563eb; --accent-fg: #fff; --ok: #15803d; --warn: #b45309; --err: #b91c1c;
+    --row-hover: #f0f3f8; --drop: #dbeafe; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f1216; --card: #171b21; --fg: #e6e8eb; --muted: #9aa3ae; --line: #2a313b;
+            --accent: #3b82f6; --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --row-hover: #1e242c; --drop: #1e3a5f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px; }
+  .wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 18px; margin: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+  .card.drop { outline: 2px dashed var(--accent); background: var(--drop); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+  button.danger { color: var(--err); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
+  .pill.ok { color: var(--ok); border-color: currentColor; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-family: var(--mono); font-size: 13px; }
+  .crumbs a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.entry { cursor: pointer; }
+  tr.entry:hover { background: var(--row-hover); }
+  .name { font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  .name .ic { display: inline-block; width: 1.4em; }
+  .actions { white-space: nowrap; }
+  .actions button { padding: 3px 7px; font-size: 12px; margin-left: 2px; }
+  progress { width: 100%; height: 8px; }
+  #log { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; max-height: 160px; overflow: auto; color: var(--muted); margin: 0; }
+  #preview img { max-width: 100%; border-radius: 6px; }
+  #preview pre { max-height: 360px; overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; font-size: 12px; }
+  @media (max-width: 560px) { .hide-sm { display: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ESP32-C6 SD Browser</h1>
+    <div><span id="status" class="pill">disconnected</span></div>
+  </header>
+
+  <section class="card">
+    <div class="row">
+      <button id="btnBle">Scan Bluetooth</button>
+      <button id="btnUsb">Connect USB</button>
+      <button id="btnDisc" class="secondary" disabled>Disconnect</button>
+    </div>
+    <div id="caps" class="small muted" style="margin-top:8px"></div>
+    <p class="small muted" style="margin:8px 0 0">
+      <b>Bluetooth</b>: pick <span class="name">C6-SD</span> in the chooser. No pairing or setup needed; slow for big files.<br>
+      <b>USB</b>: plug the board's USB-C port into the laptop and pick the Espressif serial port. Fast, wired, no radio.
+    </p>
+  </section>
+
+  <section id="browser" class="card" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="row">
+        <span id="devinfo" class="small muted"></span>
+        <button id="btnUpload" class="secondary">Upload files</button>
+        <button id="btnMkdir" class="secondary">New folder</button>
+        <button id="btnRefresh" class="secondary">Refresh</button>
+        <input id="fileInput" type="file" multiple hidden>
+      </div>
+    </div>
+    <div id="progressWrap" style="margin-top:10px" hidden>
+      <div class="small muted" id="progressText"></div>
+      <progress id="progress" max="100" value="0"></progress>
+    </div>
+    <div style="overflow-x:auto; margin-top:10px">
+      <table>
+        <thead><tr><th>Name</th><th class="num">Size</th><th class="hide-sm">Modified</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="small muted" style="margin:8px 0 0">Drop files anywhere on this panel to upload them into the current folder.</p>
+    <div id="preview" style="margin-top:10px" hidden></div>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <span class="small muted">Log</span>
+      <button id="btnClearLog" class="secondary" style="padding:4px 9px;font-size:12px">Clear</button>
+    </div>
+    <pre id="log"></pre>
+  </section>
+</div>
+
+<script>
+'use strict';
+// ============================================================================
+// Protocol constants — must match src/main.cpp
+// ============================================================================
+const SVC_UUID  = 'c6d5f000-5d00-4b2a-9e6a-000000000001';
+const CMD_UUID  = 'c6d5f001-5d00-4b2a-9e6a-000000000001';
+const DATA_UUID = 'c6d5f002-5d00-4b2a-9e6a-000000000001';
+const UP_UUID   = 'c6d5f003-5d00-4b2a-9e6a-000000000001';
+const FR_DATA = 1, FR_END = 2, FR_ERR = 3;
+const ESPRESSIF_VID = 0x303A;
+const LONG_OP_MS = 300000;               // copy / delete of big trees
+const enc = new TextEncoder(), dec = new TextDecoder();
+
+const $ = id => document.getElementById(id);
+const log = m => { const el = $('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop = el.scrollHeight; };
+const fmtSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n/1024).toFixed(1)} KB` : n < 1073741824 ? `${(n/1048576).toFixed(1)} MB` : `${(n/1073741824).toFixed(2)} GB`;
+const fmtTime = t => t ? new Date(t * 1000).toLocaleString() : '';
+const joinPath = (dir, name) => (dir === '/' ? '' : dir) + '/' + name;
+const baseName = p => p.slice(p.lastIndexOf('/') + 1);
+const concat = chunks => { let n = 0; for (const c of chunks) n += c.length; const out = new Uint8Array(n); let o = 0; for (const c of chunks) { out.set(c, o); o += c.length; } return out; };
+
+// ============================================================================
+// Common request/response machinery. A transport implements _send(cmd) and
+// _sendRaw(bytes) and feeds frames/bytes into the pending request.
+// ============================================================================
+class RequestTransport {
+  constructor() { this.pending = null; }
+  _newPending(cmd, resolve, reject, onProgress, timeoutMs) {
+    const p = { cmd, chunks: [], bytes: 0, need: null, resolve, reject, onProgress, timer: null };
+    const ms = timeoutMs || this.idleTimeoutMs;
+    p.touch = () => { clearTimeout(p.timer); p.timer = setTimeout(() => { this.pending = null; reject(new Error(`timeout waiting for "${cmd.slice(0, 24)}"`)); }, ms); };
+    return p;
+  }
+  _finish(p, err) {
+    if (this.pending !== p) return;
+    this.pending = null; clearTimeout(p.timer);
+    err ? p.reject(err) : p.resolve(concat(p.chunks));
+  }
+  _fail(err) { if (this.pending) this._finish(this.pending, err); }
+  // Send a command and wait for its response.
+  request(cmd, onProgress, timeoutMs) {
+    if (this.pending) return Promise.reject(new Error(`${this.kind} request already in flight`));
+    return new Promise((resolve, reject) => {
+      const p = this._newPending(cmd, resolve, reject, onProgress, timeoutMs);
+      this.pending = p; p.touch();
+      this._send(cmd).catch(e => this._finish(p, e));
+    });
+  }
+  // Wait for a response the device will send on its own (upload acks).
+  awaitResponse(label, timeoutMs) {
+    if (this.pending) return Promise.reject(new Error(`${this.kind} request already in flight`));
+    return new Promise((resolve, reject) => {
+      const p = this._newPending(label, resolve, reject, null, timeoutMs);
+      this.pending = p; p.touch();
+      this._afterArm?.();
+    });
+  }
+  async json(cmd, timeoutMs) { const u8 = await this.request(cmd, null, timeoutMs); return u8.length ? JSON.parse(dec.decode(u8)) : {}; }
+
+  info()            { return this.json('I'); }
+  list(path)        { return this.json('L ' + path); }
+  mkdir(path)       { return this.json('K ' + path); }
+  remove(path)      { return this.json('D ' + path, LONG_OP_MS); }
+  move(src, dst)    { return this.json(`M ${src}\t${dst}`, LONG_OP_MS); }
+  copy(src, dst)    { return this.json(`C ${src}\t${dst}`, LONG_OP_MS); }
+
+  async readFile(path, size, onProgress) {
+    const parts = []; let off = 0;
+    while (off < size) {
+      const n = Math.min(this.windowBytes, size - off);
+      const u8 = await this.request(`R ${path} ${off} ${n}`, b => onProgress?.(off + b));
+      if (!u8.length) break;
+      parts.push(u8); off += u8.length;
+    }
+    return new Blob(parts);
+  }
+  // Upload: handshake, then one piece in flight at a time, each acked by the device.
+  async writeFile(path, blob, onProgress) {
+    const size = blob.size, chunk = this.uploadChunk;
+    const hs = await this.json(`W ${path}\t${size}\t${chunk}`, 20000);
+    if (size === 0) return hs;
+    let off = 0, last = null;
+    while (off < size) {
+      const piece = new Uint8Array(await blob.slice(off, off + chunk).arrayBuffer());
+      const ack = this.awaitResponse(`upload ${baseName(path)}`, 30000);
+      await this._sendRaw(piece);
+      const resp = await ack;
+      off += piece.length; onProgress?.(off);
+      if (resp.length) last = JSON.parse(dec.decode(resp));
+    }
+    return last || {};
+  }
+}
+
+// ============================================================================
+// Transport 1: Web Bluetooth (GATT notify frames: [type][payload])
+// ============================================================================
+class BleTransport extends RequestTransport {
+  constructor() { super(); this.kind = 'BLE'; this.idleTimeoutMs = 8000; this.windowBytes = 32 * 1024; this.uploadChunk = 4096; }
+
+  async connect(onDisconnect) {
+    if (!navigator.bluetooth) throw new Error('Web Bluetooth is not available in this browser (use Chrome/Edge on desktop or Android).');
+    this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC_UUID] }] });
+    this.device.addEventListener('gattserverdisconnected', () => { this._fail(new Error('BLE disconnected')); onDisconnect(); });
+    const gatt = await this.device.gatt.connect();
+    const svc  = await gatt.getPrimaryService(SVC_UUID);
+    this.cmd   = await svc.getCharacteristic(CMD_UUID);
+    this.data  = await svc.getCharacteristic(DATA_UUID);
+    this.up    = await svc.getCharacteristic(UP_UUID);
+    this.data.addEventListener('characteristicvaluechanged', e => this._onFrame(e.target.value));
+    await this.data.startNotifications();
+    this.label = this.device.name || 'BLE device';
+  }
+  async disconnect() { try { this.device?.gatt?.disconnect(); } catch {} }
+  _send(cmd) { return this.cmd.writeValueWithResponse(enc.encode(cmd)); }
+  async _sendRaw(u8) {
+    // 512 bytes = ATT value limit; with-response works at any MTU (long writes) and paces us.
+    for (let o = 0; o < u8.length; o += 512) await this.up.writeValueWithResponse(u8.subarray(o, o + 512));
+  }
+  _onFrame(dv) {
+    const u8 = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+    const p = this.pending;
+    if (!p || !u8.length) return;
+    const type = u8[0], payload = u8.slice(1);
+    if (type === FR_DATA)     { p.chunks.push(payload); p.bytes += payload.length; p.onProgress?.(p.bytes); p.touch(); }
+    else if (type === FR_END) { this._finish(p); }
+    else if (type === FR_ERR) { this._finish(p, new Error(dec.decode(payload))); }
+  }
+}
+
+// ============================================================================
+// Transport 2: USB-C via Web Serial (line protocol: "OK <len>\n"+bytes | "ERR msg\n")
+// ============================================================================
+class UsbTransport extends RequestTransport {
+  constructor() { super(); this.kind = 'USB'; this.idleTimeoutMs = 5000; this.windowBytes = 256 * 1024; this.uploadChunk = 8192; this.buf = new Uint8Array(0); }
+
+  async connect(onDisconnect) {
+    if (!navigator.serial) throw new Error('Web Serial is not available in this browser (use Chrome/Edge on desktop).');
+    this.port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
+    await this.port.open({ baudRate: 921600, bufferSize: 256 * 1024 });
+    this.port.addEventListener('disconnect', () => { this._fail(new Error('USB disconnected')); onDisconnect(); });
+    this.writer = this.port.writable.getWriter();
+    this._readLoop();
+    const i = this.port.getInfo();
+    this.label = `USB ${i.usbVendorId?.toString(16) ?? ''}:${i.usbProductId?.toString(16) ?? ''}`;
+  }
+  async disconnect() {
+    this.closing = true;
+    try { await this.reader?.cancel(); } catch {}
+    try { this.writer?.releaseLock(); } catch {}
+    try { await this.port?.close(); } catch {}
+  }
+  _send(cmd) { this._parse(); return this.writer.write(enc.encode(cmd + '\n')); }
+  _sendRaw(u8) { return this.writer.write(u8); }
+  _afterArm() { this._parse(); }
+
+  async _readLoop() {
+    this.reader = this.port.readable.getReader();
+    try {
+      for (;;) { const { value, done } = await this.reader.read(); if (done) break; this._feed(value); }
+    } catch (e) { if (!this.closing) this._fail(e); }
+    finally { try { this.reader.releaseLock(); } catch {} }
+  }
+  _feed(chunk) {
+    const p = this.pending;
+    if (p && p.need != null && this.buf.length === 0) { this._take(p, chunk); return; }   // fast path inside a payload
+    this.buf = concat([this.buf, chunk]);
+    this._parse();
+  }
+  _take(p, bytes) {
+    const want = p.need - p.bytes;
+    const take = bytes.subarray(0, Math.min(want, bytes.length));
+    if (take.length) { p.chunks.push(take.slice()); p.bytes += take.length; p.onProgress?.(p.bytes); p.touch(); }
+    if (bytes.length > take.length) this.buf = bytes.slice(take.length);
+    if (p.bytes >= p.need) this._finish(p);
+  }
+  _parse() {
+    for (;;) {
+      const p = this.pending;
+      if (!p) { if (this.buf.length > 65536) this.buf = this.buf.slice(-4096); return; }
+      if (p.need == null) {
+        const nl = this.buf.indexOf(10);
+        if (nl < 0) { if (this.buf.length > 65536) this.buf = this.buf.slice(-4096); return; }
+        const line = dec.decode(this.buf.subarray(0, nl)).replace(/\r$/, '');
+        this.buf = this.buf.slice(nl + 1);
+        let m;
+        if ((m = /^OK (\d+)$/.exec(line)))      { p.need = parseInt(m[1], 10); p.touch(); if (p.need === 0) { this._finish(p); continue; } }
+        else if ((m = /^ERR (.*)$/.exec(line))) { this._finish(p, new Error(m[1])); return; }
+        else if (line.trim())                   { log('device: ' + line); }
+        continue;
+      }
+      const rest = this.buf; this.buf = new Uint8Array(0);
+      this._take(p, rest);
+      if (this.pending === p && p.bytes < p.need) return;
+      if (!this.buf.length) return;
+    }
+  }
+}
+
+// ============================================================================
+// UI
+// ============================================================================
+let tp = null, cwd = '/', busy = false, entries = [];
+
+function setStatus(text, cls) { const s = $('status'); s.textContent = text; s.className = 'pill' + (cls ? ' ' + cls : ''); }
+function setBusy(b) { busy = b; for (const id of ['btnBle', 'btnUsb', 'btnRefresh', 'btnUpload', 'btnMkdir']) $(id).disabled = b; }
+function showProgress(text, frac) {
+  const w = $('progressWrap'); if (text == null) { w.hidden = true; return; }
+  w.hidden = false; $('progressText').textContent = text; $('progress').value = Math.round(frac * 100);
+}
+function capabilities() {
+  const notes = [];
+  notes.push(navigator.bluetooth ? '✔ Web Bluetooth available' : '✖ Web Bluetooth not available (Chrome/Edge on Windows, macOS, Linux, Android only)');
+  notes.push(navigator.serial    ? '✔ Web Serial available'    : '✖ Web Serial not available (Chrome/Edge on desktop only)');
+  if (!window.isSecureContext) notes.push('⚠ Not HTTPS: Web Bluetooth and Web Serial are disabled. Host this page on HTTPS (e.g. GitHub Pages).');
+  $('caps').innerHTML = notes.map(n => `<div>${n}</div>`).join('');
+}
+
+async function attach(transport) {
+  tp = transport;
+  setStatus(`${tp.kind}: ${tp.label}`, 'ok');
+  $('btnDisc').disabled = false;
+  $('browser').hidden = false;
+  await refreshInfo();
+  if (tp.kind === 'BLE') log('Tip: for big files, plug in USB-C and use "Connect USB" — it is 10–50× faster than BLE.');
+  await navigate('/');
+}
+async function refreshInfo() {
+  try {
+    const i = await tp.info();
+    const sd = i.sd?.ok ? `SD ${fmtSize(i.sd.used)} / ${fmtSize(i.sd.total)}` : 'SD not mounted';
+    $('devinfo').textContent = `${i.name} fw ${i.fw} · ${sd}`;
+  } catch (e) { log('info failed: ' + e.message); }
+}
+async function detach() {
+  const t = tp; tp = null;
+  setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true;
+  if (t) await t.disconnect();
+}
+
+async function navigate(path) {
+  if (!tp) return;
+  setBusy(true); $('preview').hidden = true;
+  try {
+    const t0 = performance.now();
+    const res = await tp.list(path);
+    cwd = res.path || path; entries = res.entries || [];
+    renderCrumbs(); renderRows(entries);
+    log(`list ${cwd}: ${entries.length} entries in ${Math.round(performance.now() - t0)} ms${res.truncated ? ' (truncated)' : ''}`);
+  } catch (e) { log(`list ${path} failed: ${e.message}`); }
+  finally { setBusy(false); }
+}
+function renderCrumbs() {
+  const parts = cwd.split('/').filter(Boolean), c = $('crumbs'); c.innerHTML = '';
+  const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => navigate(p); return a; };
+  c.appendChild(mk('/', '/'));
+  let acc = '';
+  parts.forEach(seg => { acc += '/' + seg; c.appendChild(document.createTextNode(' › ')); c.appendChild(mk(seg, acc)); });
+}
+
+const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const isPreviewable = n => /\.(txt|log|csv|json|ini|md|html?|png|jpe?g|gif|bmp)$/i.test(n);
+const PREVIEW_MAX = 2 * 1024 * 1024;
+
+function renderRows(list) {
+  list.sort((a, b) => (b.d - a.d) || a.n.localeCompare(b.n, undefined, { numeric: true }));
+  const tb = $('rows'); tb.innerHTML = '';
+  if (cwd !== '/') {
+    const tr = document.createElement('tr'); tr.className = 'entry';
+    tr.innerHTML = `<td class="name"><span class="ic">↩</span>..</td><td></td><td class="hide-sm"></td><td></td>`;
+    tr.onclick = () => navigate(cwd.slice(0, cwd.lastIndexOf('/')) || '/');
+    tb.appendChild(tr);
+  }
+  if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = '<td colspan=4 class="muted">(empty)</td>'; tb.appendChild(tr); }
+  for (const e of list) {
+    const tr = document.createElement('tr'); tr.className = 'entry';
+    const full = joinPath(cwd, e.n), canPreview = !e.d && isPreviewable(e.n) && e.s <= PREVIEW_MAX;
+    tr.innerHTML = `<td class="name"><span class="ic">${e.d ? '📁' : '📄'}</span>${escapeHtml(e.n)}</td>
+                    <td class="num">${e.d ? '' : fmtSize(e.s)}</td>
+                    <td class="hide-sm small muted">${fmtTime(e.t)}</td>
+                    <td class="actions"></td>`;
+    const act = tr.querySelector('.actions');
+    const btn = (label, fn, cls = 'secondary') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; act.appendChild(b); };
+    if (!e.d) btn('Download', () => download(full, e.s));
+    if (canPreview) btn('Preview', () => preview(full, e.n, e.s));
+    btn('Rename', () => renameEntry(e));
+    btn('Copy',   () => copyEntry(e));
+    btn('Move',   () => moveEntry(e));
+    btn('Delete', () => deleteEntry(e), 'secondary danger');
+    tr.onclick = () => e.d ? navigate(full) : (canPreview ? preview(full, e.n, e.s) : download(full, e.s));
+    tb.appendChild(tr);
+  }
+}
+
+// ---------------- file operations ----------------
+async function fetchBlob(path, size) {
+  const name = baseName(path), t0 = performance.now();
+  showProgress(`${tp.kind}: ${name} 0 / ${fmtSize(size)}`, 0);
+  try {
+    const blob = await tp.readFile(path, size, got => {
+      const s = (performance.now() - t0) / 1000;
+      showProgress(`${tp.kind}: ${name} ${fmtSize(got)} / ${fmtSize(size)} · ${fmtSize(got / Math.max(s, .1))}/s`, size ? got / size : 0);
+    });
+    log(`read ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    return blob;
+  } finally { showProgress(null); }
+}
+async function download(path, size) {
+  if (busy) return;
+  const name = baseName(path);
+  setBusy(true);
+  try {
+    const blob = await fetchBlob(path, size);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  } catch (e) { log(`download ${name} failed: ${e.message}`); }
+  finally { setBusy(false); }
+}
+async function preview(path, name, size) {
+  if (busy) return;
+  setBusy(true);
+  try {
+    const blob = await fetchBlob(path, size), pv = $('preview'); pv.innerHTML = ''; pv.hidden = false;
+    const h = document.createElement('div'); h.className = 'small muted'; h.textContent = name; pv.appendChild(h);
+    if (/\.(png|jpe?g|gif|bmp)$/i.test(name)) { const img = new Image(); img.src = URL.createObjectURL(blob); pv.appendChild(img); }
+    else { const pre = document.createElement('pre'); pre.textContent = await blob.text(); pv.appendChild(pre); }
+  } catch (e) { log(`preview ${name} failed: ${e.message}`); }
+  finally { setBusy(false); }
+}
+
+// Runs one device operation with busy state, logging and a listing refresh.
+async function op(label, fn) {
+  if (busy || !tp) return;
+  setBusy(true);
+  const t0 = performance.now();
+  try { const r = await fn(); log(`${label}: ok${r && r.copied != null ? ` (${fmtSize(r.copied)})` : ''} in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
+  catch (e) { log(`${label} failed: ${e.message}`); alert(`${label} failed:\n${e.message}`); }
+  finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
+}
+const validName = n => n && !/[\\/:*?"<>|\t\r\n]/.test(n) && n !== '.' && n !== '..';
+
+function renameEntry(e) {
+  const name = prompt(`Rename "${e.n}" to:`, e.n);
+  if (name == null || name === e.n) return;
+  if (!validName(name)) return alert('Invalid name.');
+  op(`rename ${e.n} → ${name}`, () => tp.move(joinPath(cwd, e.n), joinPath(cwd, name)));
+}
+function moveEntry(e) {
+  const dst = prompt(`Move "${e.n}" to (full path):`, joinPath(cwd, e.n));
+  if (dst == null || dst === joinPath(cwd, e.n)) return;
+  op(`move ${e.n} → ${dst}`, () => tp.move(joinPath(cwd, e.n), dst));
+}
+function copyEntry(e) {
+  const dst = prompt(`Copy "${e.n}" to (full path):`, joinPath(cwd, 'Copy of ' + e.n));
+  if (dst == null) return;
+  op(`copy ${e.n} → ${dst}`, () => tp.copy(joinPath(cwd, e.n), dst));
+}
+function deleteEntry(e) {
+  if (!confirm(`Delete ${e.d ? 'folder (and everything in it)' : 'file'} "${e.n}"?\nThis cannot be undone.`)) return;
+  op(`delete ${e.n}`, () => tp.remove(joinPath(cwd, e.n)));
+}
+$('btnMkdir').onclick = () => {
+  const name = prompt('New folder name:');
+  if (name == null) return;
+  if (!validName(name)) return alert('Invalid name.');
+  op(`mkdir ${name}`, () => tp.mkdir(joinPath(cwd, name)));
+};
+
+async function uploadFiles(files) {
+  if (busy || !tp || !files.length) return;
+  setBusy(true);
+  try {
+    for (const file of files) {
+      if (!validName(file.name)) { log(`upload skipped (bad name): ${file.name}`); continue; }
+      const path = joinPath(cwd, file.name);
+      if (entries.some(e => e.n === file.name) && !confirm(`"${file.name}" already exists here. Overwrite?`)) { log(`upload skipped: ${file.name}`); continue; }
+      const t0 = performance.now();
+      showProgress(`${tp.kind}: uploading ${file.name} 0 / ${fmtSize(file.size)}`, 0);
+      try {
+        await tp.writeFile(path, file, sent => {
+          const s = (performance.now() - t0) / 1000;
+          showProgress(`${tp.kind}: uploading ${file.name} ${fmtSize(sent)} / ${fmtSize(file.size)} · ${fmtSize(sent / Math.max(s, .1))}/s`, file.size ? sent / file.size : 1);
+        });
+        log(`upload ${file.name}: ${fmtSize(file.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+      } catch (e) { log(`upload ${file.name} failed: ${e.message}`); alert(`Upload of ${file.name} failed:\n${e.message}`); break; }
+      finally { showProgress(null); }
+    }
+  } finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
+}
+$('btnUpload').onclick = () => $('fileInput').click();
+$('fileInput').onchange = e => { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f); };
+{ const card = $('browser'); let depth = 0;
+  card.addEventListener('dragenter', e => { e.preventDefault(); depth++; card.classList.add('drop'); });
+  card.addEventListener('dragover',  e => { e.preventDefault(); });
+  card.addEventListener('dragleave', e => { if (--depth <= 0) { depth = 0; card.classList.remove('drop'); } });
+  card.addEventListener('drop',      e => { e.preventDefault(); depth = 0; card.classList.remove('drop'); uploadFiles([...e.dataTransfer.files]); });
+}
+
+// ---------------- connection buttons ----------------
+async function connectWith(Transport, statusText) {
+  if (busy) return; setBusy(true); setStatus(statusText);
+  const t = new Transport();
+  try {
+    await t.connect(() => { log(`${t.kind} link lost`); detach(); });
+    log(`${t.kind} connected: ${t.label}`);
+    setBusy(false); await attach(t);
+  } catch (e) { setStatus('disconnected'); log(`${t.kind}: ${e.message}`); setBusy(false); try { await t.disconnect(); } catch {} }
+}
+$('btnBle').onclick = () => connectWith(BleTransport, 'scanning…');
+$('btnUsb').onclick = () => connectWith(UsbTransport, 'opening port…');
+$('btnDisc').onclick = () => { log('disconnected'); detach(); };
+$('btnRefresh').onclick = () => navigate(cwd);
+$('btnClearLog').onclick = () => { $('log').textContent = ''; };
+
+capabilities();
+</script>
+</body>
+</html>
