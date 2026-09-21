@@ -8,14 +8,15 @@
   :root {
     --bg: #f6f7f9; --card: #ffffff; --fg: #1a1d21; --muted: #5f6672; --line: #e2e5ea;
     --accent: #2563eb; --accent-fg: #fff; --ok: #15803d; --warn: #b45309; --err: #b91c1c;
-    --row-hover: #f0f3f8; --drop: #dbeafe; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --row-hover: #f0f3f8; --drop: #dbeafe; --sel: #e8f0fe; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #0f1216; --card: #171b21; --fg: #e6e8eb; --muted: #9aa3ae; --line: #2a313b;
-            --accent: #3b82f6; --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --row-hover: #1e242c; --drop: #1e3a5f; }
+            --accent: #3b82f6; --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --row-hover: #1e242c; --drop: #1e3a5f; --sel: #1b2a44; }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px; }
   .wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
   header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -27,26 +28,69 @@
   button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
   button.danger { color: var(--err); }
   button:disabled { opacity: .45; cursor: not-allowed; }
+  input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; }
+  input[type=checkbox] { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
   .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
   .pill.ok { color: var(--ok); border-color: currentColor; }
   .muted { color: var(--muted); }
   .small { font-size: 12px; }
   .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-family: var(--mono); font-size: 13px; }
-  .crumbs a { color: var(--accent); text-decoration: none; cursor: pointer; }
+  .crumbs a { color: var(--accent); text-decoration: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+  .crumbs a.dragover { background: var(--drop); outline: 2px solid var(--accent); }
   table { width: 100%; border-collapse: collapse; }
   th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
   th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  th.chk, td.chk { width: 28px; padding-right: 0; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   tr.entry { cursor: pointer; }
   tr.entry:hover { background: var(--row-hover); }
+  tr.entry.selected { background: var(--sel); }
+  tr.entry.dragover { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--drop); }
+  tr.entry[draggable] { user-select: none; }
   .name { font-family: var(--mono); font-size: 13px; word-break: break-all; }
   .name .ic { display: inline-block; width: 1.4em; }
-  .actions { white-space: nowrap; }
+  .actions { white-space: nowrap; text-align: right; }
   .actions button { padding: 3px 7px; font-size: 12px; margin-left: 2px; }
+  #selbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--sel); }
+  #selbar button { padding: 5px 10px; font-size: 13px; }
   progress { width: 100%; height: 8px; }
   #log { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; max-height: 160px; overflow: auto; color: var(--muted); margin: 0; }
   #preview img { max-width: 100%; border-radius: 6px; }
   #preview pre { max-height: 360px; overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; font-size: 12px; }
+  /* dialogs */
+  dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  dialog form { display: flex; flex-direction: column; gap: 10px; padding: 16px; margin: 0; }
+  dialog h2 { font-size: 15px; margin: 0; word-break: break-all; }
+  dialog footer { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  dialog footer .dest { flex: 1 1 100%; }
+  .picklist { border: 1px solid var(--line); border-radius: 8px; max-height: min(320px, 45vh); overflow: auto; }
+  .picklist .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  .picklist .item:last-child { border-bottom: 0; }
+  .picklist .item:hover { background: var(--row-hover); }
+  .picklist .item.disabled { opacity: .4; cursor: not-allowed; }
+  .picklist .item .tag { margin-left: auto; font: 11px system-ui, sans-serif; color: var(--muted); white-space: nowrap; }
+  .picklist .empty { padding: 12px; color: var(--muted); font-size: 13px; }
+  .hint { min-height: 1.3em; font-size: 12px; color: var(--muted); }
+  .hint.err { color: var(--err); }
+  .dest { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
+  label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  select, input[type=number] { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; }
+  /* converter */
+  summary { cursor: pointer; font-weight: 600; }
+  .conv-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+  .conv-opts { display: flex; flex-direction: column; gap: 8px; }
+  .conv-preview { display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 180px; }
+  .offscreen { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }   /* rendered, so frames get painted for the preview */
+  #cvCanvas, #cvFirst { background: #000; border: 1px solid var(--line); border-radius: 6px; max-width: 100%; }
+  #cvFirst { max-height: 320px; }
+  pre.cmd { flex: 1; margin: 0; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; background: var(--bg); padding: 8px 10px; border-radius: 6px; user-select: all; }
+  #cvLog { font-family: var(--mono); white-space: pre-wrap; max-height: 200px; overflow: auto; color: var(--muted); margin: 6px 0 0; }
+  table.stats td { padding: 3px 8px 3px 0; border: 0; }
+  table.stats td:first-child { color: var(--muted); }
+  #cvWarn.warn { color: var(--warn); } #cvWarn.err { color: var(--err); }
+  #convCard.drop { outline: 2px dashed var(--accent); }
+  @media (max-width: 640px) { .conv-grid { grid-template-columns: 1fr; } .conv-preview { align-items: flex-start; } }
   @media (max-width: 560px) { .hide-sm { display: none; } }
 </style>
 </head>
@@ -85,14 +129,96 @@
       <div class="small muted" id="progressText"></div>
       <progress id="progress" max="100" value="0"></progress>
     </div>
+    <div id="selbar" hidden>
+      <b id="selCount"></b>
+      <button id="selMove" class="secondary">Move to…</button>
+      <button id="selCopy" class="secondary">Copy to…</button>
+      <button id="selDownload" class="secondary">Download</button>
+      <button id="selDelete" class="secondary danger">Delete</button>
+      <button id="selClear" class="secondary">Clear</button>
+    </div>
     <div style="overflow-x:auto; margin-top:10px">
       <table>
-        <thead><tr><th>Name</th><th class="num">Size</th><th class="hide-sm">Modified</th><th></th></tr></thead>
+        <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th>Name</th><th class="num">Size</th><th class="hide-sm">Modified</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
-    <p class="small muted" style="margin:8px 0 0">Drop files anywhere on this panel to upload them into the current folder.</p>
+    <p class="small muted" style="margin:8px 0 0">
+      Drop files from your computer onto this panel to upload them here. Drag entries onto a folder or a breadcrumb to move them.
+      Ctrl+click or use the checkboxes to select several entries at once.
+    </p>
     <div id="preview" style="margin-top:10px" hidden></div>
+  </section>
+
+  <section class="card" id="convCard">
+    <details id="convDetails">
+      <summary>Video → MJPEG converter <span class="small muted">for the Waveshare ESP32-C6-LCD-1.47 video player</span></summary>
+      <p class="small muted" style="margin:8px 0 10px">
+        Converts any video the browser can read (MP4, MOV, WebM, MKV…) into a raw Motion-JPEG stream the player sketch expects:
+        172 × 320 portrait, baseline JPEG frames, no audio. Conversion runs in this browser tab with ffmpeg.wasm (a one-time
+        32 MB download); nothing is sent to a server. Finished files can be uploaded straight into <span class="name">/mjpeg</span> on the card.
+      </p>
+      <div class="row">
+        <button id="cvPick" class="secondary">Choose video</button>
+        <input id="cvFile" type="file" accept="video/*,.mkv,.mov,.mp4,.webm,.avi,.m4v" hidden>
+        <span id="cvInfo" class="small muted">No video chosen. You can also drop one here.</span>
+      </div>
+      <div class="conv-grid" style="margin-top:12px">
+        <div class="conv-opts">
+          <label class="field">Output size
+            <select id="cvSize"><option value="172x320">172 × 320 portrait (player default, rotation 0)</option><option value="320x172">320 × 172 landscape (players using rotation 1)</option></select>
+          </label>
+          <label class="field">Rotate source
+            <select id="cvRotate"><option value="none">No rotation</option><option value="cw">90° clockwise (landscape video, board held sideways)</option><option value="ccw">90° counter-clockwise</option><option value="180">180°</option></select>
+          </label>
+          <label class="field">Fit
+            <select id="cvFit"><option value="crop">Crop to fill (keeps proportions, trims edges)</option><option value="pad">Letterbox (keeps everything, black bars)</option><option value="stretch">Stretch to fill</option></select>
+          </label>
+          <label class="field">Frame rate
+            <select id="cvFps"><option>10</option><option>12</option><option>15</option><option>20</option><option selected>24</option><option>30</option></select>
+          </label>
+          <label class="field">JPEG quality <span class="muted">(-q:v, lower is better and bigger)</span>
+            <span class="row"><input id="cvQ" type="range" min="2" max="15" value="7" style="flex:1"><b id="cvQVal" style="width:2em;text-align:right">7</b></span>
+          </label>
+          <div class="row">
+            <label class="field" style="flex:1">Start at (s)<input id="cvStart" type="number" min="0" step="0.1" placeholder="0"></label>
+            <label class="field" style="flex:1">Duration (s)<input id="cvDur" type="number" min="0" step="0.1" placeholder="whole video"></label>
+          </div>
+          <label class="field">Output name<span class="row"><input id="cvName" type="text" autocomplete="off" spellcheck="false" placeholder="video" style="flex:1"><span class="muted">.mjpeg</span></span></label>
+        </div>
+        <div class="conv-preview">
+          <div class="small muted">Preview of the output frame</div>
+          <canvas id="cvCanvas" width="172" height="320"></canvas>
+          <div id="cvPreviewNote" class="small muted"></div>
+          <video id="cvVideo" class="offscreen" muted playsinline preload="auto"></video>
+        </div>
+      </div>
+      <div class="small muted" style="margin-top:10px">Same conversion with a local ffmpeg:</div>
+      <div class="row" style="align-items:flex-start">
+        <pre id="cvCmd" class="cmd"></pre>
+        <button id="cvCopy" class="secondary" style="padding:5px 10px;font-size:12px">Copy</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="cvConvert" disabled>Convert in browser</button>
+        <button id="cvCancel" class="secondary" hidden>Cancel</button>
+        <span id="cvStatus" class="small muted"></span>
+      </div>
+      <progress id="cvProgress" max="100" value="0" style="margin-top:6px" hidden></progress>
+      <div id="cvResult" style="margin-top:12px" hidden>
+        <div class="conv-grid">
+          <div>
+            <table class="stats"><tbody id="cvStats"></tbody></table>
+            <div id="cvWarn" class="small" style="margin-top:6px"></div>
+            <div class="row" style="margin-top:10px">
+              <button id="cvDownload" class="secondary">Download .mjpeg</button>
+              <button id="cvUpload">Upload to /mjpeg on the card</button>
+            </div>
+          </div>
+          <div class="conv-preview"><div class="small muted">First frame of the result</div><img id="cvFirst" alt="first frame"></div>
+        </div>
+      </div>
+      <details id="cvLogDetails" style="margin-top:10px"><summary class="small muted">ffmpeg output</summary><pre id="cvLog" class="small"></pre></details>
+    </details>
   </section>
 
   <section class="card">
@@ -103,6 +229,40 @@
     <pre id="log"></pre>
   </section>
 </div>
+
+<!-- Name prompt: rename / new folder -->
+<dialog id="nameDlg">
+  <form method="dialog">
+    <h2 id="nameTitle"></h2>
+    <input id="nameInput" type="text" autocomplete="off" spellcheck="false">
+    <div id="nameHint" class="hint"></div>
+    <footer>
+      <button type="button" class="secondary" id="nameCancel">Cancel</button>
+      <button type="submit" value="ok" id="nameOk">OK</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Folder picker: move / copy destination -->
+<dialog id="pickDlg">
+  <form method="dialog">
+    <h2 id="pickTitle"></h2>
+    <div class="row" style="justify-content:space-between">
+      <div class="crumbs" id="pickCrumbs"></div>
+      <button type="button" class="secondary" id="pickMkdir" style="padding:5px 10px;font-size:12px">New folder</button>
+    </div>
+    <div class="picklist" id="pickList"></div>
+    <label class="field" id="pickNameWrap">Name at destination
+      <input id="pickName" type="text" autocomplete="off" spellcheck="false">
+    </label>
+    <div id="pickHint" class="hint"></div>
+    <footer>
+      <span class="dest" id="pickDest"></span>
+      <button type="button" class="secondary" id="pickCancel">Cancel</button>
+      <button type="submit" value="ok" id="pickOk">Move here</button>
+    </footer>
+  </form>
+</dialog>
 
 <script>
 'use strict';
@@ -307,10 +467,18 @@ class UsbTransport extends RequestTransport {
 // ============================================================================
 // UI
 // ============================================================================
+const DRAG_TYPE = 'application/x-c6sd-names';     // internal row drags (vs. files from the desktop)
 let tp = null, cwd = '/', busy = false, entries = [];
+const selected = new Set();                         // names selected in cwd
+let anchor = null;                                  // last toggled name, for shift-click ranges
 
 function setStatus(text, cls) { const s = $('status'); s.textContent = text; s.className = 'pill' + (cls ? ' ' + cls : ''); }
-function setBusy(b) { busy = b; for (const id of ['btnBle', 'btnUsb', 'btnRefresh', 'btnUpload', 'btnMkdir']) $(id).disabled = b; }
+function setBusy(b) {
+  busy = b;
+  for (const id of ['btnBle', 'btnUsb', 'btnRefresh', 'btnUpload', 'btnMkdir', 'selMove', 'selCopy', 'selDelete']) $(id).disabled = b;
+  updateSelection();
+  if (typeof refreshConv === 'function') refreshConv();
+}
 function showProgress(text, frac) {
   const w = $('progressWrap'); if (text == null) { w.hidden = true; return; }
   w.hidden = false; $('progressText').textContent = text; $('progress').value = Math.round(frac * 100);
@@ -341,7 +509,9 @@ async function refreshInfo() {
 }
 async function detach() {
   const t = tp; tp = null;
+  for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
   setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true;
+  selected.clear(); entries = []; updateSelection();
   if (t) await t.disconnect();
 }
 
@@ -352,14 +522,16 @@ async function navigate(path) {
     const t0 = performance.now();
     const res = await tp.list(path);
     cwd = res.path || path; entries = res.entries || [];
+    selected.clear(); anchor = null;
     renderCrumbs(); renderRows(entries);
     log(`list ${cwd}: ${entries.length} entries in ${Math.round(performance.now() - t0)} ms${res.truncated ? ' (truncated)' : ''}`);
   } catch (e) { log(`list ${path} failed: ${e.message}`); }
   finally { setBusy(false); }
 }
+const parentOf = p => p.slice(0, p.lastIndexOf('/')) || '/';
 function renderCrumbs() {
   const parts = cwd.split('/').filter(Boolean), c = $('crumbs'); c.innerHTML = '';
-  const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => navigate(p); return a; };
+  const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => navigate(p); if (p !== cwd) makeDropTarget(a, p); return a; };
   c.appendChild(mk('/', '/'));
   let acc = '';
   parts.forEach(seg => { acc += '/' + seg; c.appendChild(document.createTextNode(' › ')); c.appendChild(mk(seg, acc)); });
@@ -374,29 +546,222 @@ function renderRows(list) {
   const tb = $('rows'); tb.innerHTML = '';
   if (cwd !== '/') {
     const tr = document.createElement('tr'); tr.className = 'entry';
-    tr.innerHTML = `<td class="name"><span class="ic">↩</span>..</td><td></td><td class="hide-sm"></td><td></td>`;
-    tr.onclick = () => navigate(cwd.slice(0, cwd.lastIndexOf('/')) || '/');
+    tr.innerHTML = `<td class="chk"></td><td class="name"><span class="ic">↩</span>..</td><td></td><td class="hide-sm"></td><td></td>`;
+    tr.onclick = () => navigate(parentOf(cwd));
+    makeDropTarget(tr, parentOf(cwd));
     tb.appendChild(tr);
   }
-  if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = '<td colspan=4 class="muted">(empty)</td>'; tb.appendChild(tr); }
+  if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = '<td colspan=5 class="muted">(empty)</td>'; tb.appendChild(tr); }
   for (const e of list) {
-    const tr = document.createElement('tr'); tr.className = 'entry';
+    const tr = document.createElement('tr'); tr.className = 'entry'; tr.dataset.name = e.n;
     const full = joinPath(cwd, e.n), canPreview = !e.d && isPreviewable(e.n) && e.s <= PREVIEW_MAX;
-    tr.innerHTML = `<td class="name"><span class="ic">${e.d ? '📁' : '📄'}</span>${escapeHtml(e.n)}</td>
+    tr.innerHTML = `<td class="chk"><input type="checkbox" aria-label="select"></td>
+                    <td class="name"><span class="ic">${e.d ? '📁' : '📄'}</span>${escapeHtml(e.n)}</td>
                     <td class="num">${e.d ? '' : fmtSize(e.s)}</td>
                     <td class="hide-sm small muted">${fmtTime(e.t)}</td>
                     <td class="actions"></td>`;
+    tr.querySelector('input').onclick = ev => { ev.stopPropagation(); toggleSelect(e.n, ev.shiftKey); };
     const act = tr.querySelector('.actions');
     const btn = (label, fn, cls = 'secondary') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; act.appendChild(b); };
     if (!e.d) btn('Download', () => download(full, e.s));
     if (canPreview) btn('Preview', () => preview(full, e.n, e.s));
     btn('Rename', () => renameEntry(e));
-    btn('Copy',   () => copyEntry(e));
-    btn('Move',   () => moveEntry(e));
-    btn('Delete', () => deleteEntry(e), 'secondary danger');
-    tr.onclick = () => e.d ? navigate(full) : (canPreview ? preview(full, e.n, e.s) : download(full, e.s));
+    btn('Copy to…', () => moveCopy('copy', [e]));
+    btn('Move to…', () => moveCopy('move', [e]));
+    btn('Delete', () => deleteEntries([e]), 'secondary danger');
+    tr.onclick = ev => {
+      if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { toggleSelect(e.n, ev.shiftKey); return; }
+      e.d ? navigate(full) : (canPreview ? preview(full, e.n, e.s) : download(full, e.s));
+    };
+    // Drag rows onto folders / breadcrumbs to move them. Dragging a selected row drags the whole selection.
+    tr.draggable = true;
+    tr.addEventListener('dragstart', ev => {
+      const names = selected.has(e.n) ? [...selected] : [e.n];
+      ev.dataTransfer.setData(DRAG_TYPE, JSON.stringify(names));
+      ev.dataTransfer.effectAllowed = 'move';
+    });
+    if (e.d) makeDropTarget(tr, full);
     tb.appendChild(tr);
   }
+  updateSelection();
+}
+
+// ---------------- selection ----------------
+const selEntries = () => entries.filter(e => selected.has(e.n));
+function toggleSelect(name, range) {
+  if (range && anchor != null && anchor !== name) {
+    const i = entries.findIndex(e => e.n === anchor), j = entries.findIndex(e => e.n === name);
+    if (i >= 0 && j >= 0) { for (let k = Math.min(i, j); k <= Math.max(i, j); k++) selected.add(entries[k].n); updateSelection(); return; }
+  }
+  selected.has(name) ? selected.delete(name) : selected.add(name);
+  anchor = name; updateSelection();
+}
+function updateSelection() {
+  for (const tr of $('rows').querySelectorAll('tr[data-name]')) {
+    const on = selected.has(tr.dataset.name);
+    tr.classList.toggle('selected', on); tr.querySelector('input').checked = on;
+  }
+  const n = selected.size, all = $('selAll');
+  all.checked = n > 0 && n === entries.length; all.indeterminate = n > 0 && n < entries.length; all.disabled = !entries.length;
+  $('selbar').hidden = !n;
+  if (!n) return;
+  const dirs = selEntries().filter(e => e.d).length;
+  $('selCount').textContent = `${n} selected${dirs ? ` (${dirs} folder${dirs > 1 ? 's' : ''})` : ''}`;
+  $('selDownload').disabled = busy || dirs === n;
+}
+$('selAll').onclick = () => { if (selected.size === entries.length) selected.clear(); else for (const e of entries) selected.add(e.n); updateSelection(); };
+$('selClear').onclick = () => { selected.clear(); updateSelection(); };
+$('selMove').onclick = () => moveCopy('move', selEntries());
+$('selCopy').onclick = () => moveCopy('copy', selEntries());
+$('selDownload').onclick = () => downloadMany(selEntries());
+$('selDelete').onclick = () => deleteEntries(selEntries());
+document.addEventListener('keydown', ev => {
+  if ($('browser').hidden || document.querySelector('dialog[open]') || /^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) return;
+  if (ev.key === 'Escape' && selected.size) { selected.clear(); updateSelection(); }
+  else if (ev.key === 'Delete' && selected.size && !busy) deleteEntries(selEntries());
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a' && entries.length) { ev.preventDefault(); for (const e of entries) selected.add(e.n); updateSelection(); }
+});
+
+// ---------------- drag & drop (internal moves) ----------------
+const isInternalDrag = ev => [...ev.dataTransfer.types].includes(DRAG_TYPE);
+function makeDropTarget(el, dstDir) {
+  el.addEventListener('dragover', ev => { if (!isInternalDrag(ev)) return; ev.preventDefault(); ev.stopPropagation(); ev.dataTransfer.dropEffect = 'move'; el.classList.add('dragover'); });
+  el.addEventListener('dragleave', () => el.classList.remove('dragover'));
+  el.addEventListener('drop', ev => {
+    if (!isInternalDrag(ev)) return;
+    ev.preventDefault(); ev.stopPropagation(); el.classList.remove('dragover');
+    let names = []; try { names = JSON.parse(ev.dataTransfer.getData(DRAG_TYPE)); } catch {}
+    dropMove(names, dstDir);
+  });
+}
+function dropMove(names, dstDir) {
+  if (dstDir === cwd) return;
+  names = names.filter(n => { const p = joinPath(cwd, n); return dstDir !== p && !dstDir.startsWith(p + '/'); });   // not into itself
+  if (!names.length) return;
+  runBatch(names.map(n => ({ label: `move ${n} → ${dstDir}`, run: () => tp.move(joinPath(cwd, n), joinPath(dstDir, n)) })));
+}
+
+// ---------------- dialogs ----------------
+const validName = n => n && !/[\\/:*?"<>|\t\r\n]/.test(n) && n !== '.' && n !== '..';
+const NAME_RULE = 'A name cannot contain \\ / : * ? " < > |';
+
+// "x" -> "x - Copy", "x - Copy (2)", … keeping the extension for files.
+function uniqueName(name, taken, isDir) {
+  if (!taken.has(name)) return name;
+  const dot = isDir ? -1 : name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name, ext = dot > 0 ? name.slice(dot) : '';
+  for (let i = 1; ; i++) { const c = `${stem} - Copy${i > 1 ? ` (${i})` : ''}${ext}`; if (!taken.has(c)) return c; }
+}
+
+// Modal text prompt with live validation. Resolves to the trimmed name or null.
+function askName(title, initial, okLabel) {
+  return new Promise(resolve => {
+    const d = $('nameDlg'), inp = $('nameInput'), hint = $('nameHint'), ok = $('nameOk');
+    $('nameTitle').textContent = title; ok.textContent = okLabel || 'OK'; inp.value = initial || '';
+    const validate = () => { const v = inp.value.trim(), good = validName(v); hint.textContent = v && !good ? NAME_RULE : ''; hint.classList.toggle('err', !!v && !good); ok.disabled = !good; };
+    inp.oninput = validate; validate();
+    $('nameCancel').onclick = () => d.close('cancel');
+    d.onclose = () => resolve(d.returnValue === 'ok' && validName(inp.value.trim()) ? inp.value.trim() : null);
+    d.returnValue = ''; d.showModal();
+    const dot = inp.value.lastIndexOf('.');
+    inp.focus(); inp.setSelectionRange(0, dot > 0 ? dot : inp.value.length);   // select the stem, like a file explorer
+  });
+}
+
+// Explorer-style destination chooser for move / copy.
+// items: [{name, path, isDir}]. Resolves to {dir, plan:[{src, dst, name}]} or null.
+function pickFolder({ mode, items, title, okLabel }) {
+  const d = $('pickDlg'), list = $('pickList'), nameInp = $('pickName'), hint = $('pickHint'), ok = $('pickOk');
+  const single = items.length === 1, verb = mode === 'move' ? 'Move' : 'Copy';
+  const srcDirs = items.filter(i => i.isDir).map(i => i.path);
+  let dir = cwd, listing = [], loading = false, loadErr = '', nameEdited = false;
+  $('pickTitle').textContent = title; ok.textContent = okLabel; $('pickNameWrap').hidden = !single;
+  nameInp.value = single ? items[0].name : '';
+  const taken = () => new Set(listing.map(e => e.n));
+
+  // What will be written where, given the current folder and name field.
+  function plan() {
+    const t = taken(), out = [];
+    for (const i of items) {
+      let n = single ? nameInp.value.trim() : i.name;
+      if (mode === 'copy' && !(single && nameEdited) && t.has(n)) n = uniqueName(n, t, i.isDir);
+      out.push({ src: i.path, dst: joinPath(dir, n), name: n });
+      t.add(n);
+    }
+    return out;
+  }
+  const selectStem = () => { const dot = items[0].isDir ? -1 : nameInp.value.lastIndexOf('.'); nameInp.setSelectionRange(0, dot > 0 ? dot : nameInp.value.length); };
+  function validate() {
+    if (single && mode === 'copy' && !nameEdited) {
+      const s = uniqueName(items[0].name, taken(), items[0].isDir);
+      if (nameInp.value !== s) { nameInp.value = s; selectStem(); }
+    }
+    const p = plan(), t = taken();
+    let err = '';
+    if (loadErr) err = loadErr;
+    else if (single && !validName(p[0].name)) err = NAME_RULE;
+    else if (srcDirs.some(s => dir === s || dir.startsWith(s + '/'))) err = 'A folder cannot be placed inside itself.';
+    else if (p.some(x => x.dst === x.src)) err = mode === 'move' ? 'Already in this folder. Pick another folder or name.' : 'Same name in the same folder. Pick another name.';
+    else { const clash = p.find(x => t.has(x.name)); if (clash) err = `"${clash.name}" already exists here.`; }
+    const renamed = mode === 'copy' && !single && p.filter((x, k) => x.name !== items[k].name).length;
+    hint.textContent = err || (renamed ? `${renamed} name${renamed > 1 ? 's' : ''} already exist here; copies get " - Copy" appended.` : '');
+    hint.classList.toggle('err', !!err);
+    $('pickDest').textContent = single ? p[0].dst : `${items.length} items → ${dir}`;
+    ok.disabled = !!err || loading;
+    return p;
+  }
+  function render() {
+    const c = $('pickCrumbs'); c.innerHTML = '';
+    const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => load(p); return a; };
+    c.appendChild(mk('/', '/'));
+    let acc = '';
+    for (const seg of dir.split('/').filter(Boolean)) { acc += '/' + seg; c.appendChild(document.createTextNode(' › ')); c.appendChild(mk(seg, acc)); }
+    list.innerHTML = '';
+    const item = (icon, label, onClick, tag, disabled) => {
+      const el = document.createElement('div'); el.className = 'item' + (disabled ? ' disabled' : '');
+      el.innerHTML = '<span class="ic"></span><span></span>'; el.children[0].textContent = icon; el.children[1].textContent = label;
+      if (tag) { const s = document.createElement('span'); s.className = 'tag'; s.textContent = tag; el.appendChild(s); }
+      if (!disabled) el.onclick = onClick;
+      list.appendChild(el);
+    };
+    if (dir !== '/') item('↩', '..', () => load(parentOf(dir)));
+    const folders = listing.filter(e => e.d).sort((a, b) => a.n.localeCompare(b.n, undefined, { numeric: true }));
+    const files = listing.length - folders.length;
+    for (const f of folders) {
+      const p = joinPath(dir, f.n), isSrc = srcDirs.includes(p);
+      item('📁', f.n, () => load(p), isSrc ? `being ${mode}d` : '', isSrc);
+    }
+    if (!folders.length) {
+      const el = document.createElement('div'); el.className = 'empty';
+      el.textContent = `No subfolders${files ? ` (${files} file${files > 1 ? 's' : ''})` : ''}. ${verb} here, go back, or create a new folder.`;
+      list.appendChild(el);
+    }
+    validate();
+  }
+  async function load(p) {
+    loading = true; loadErr = ''; ok.disabled = true;
+    list.innerHTML = '<div class="empty">Loading…</div>';
+    try { const r = await tp.list(p); dir = r.path || p; listing = r.entries || []; }
+    catch (e) { loadErr = `Cannot open ${p}: ${e.message}`; }
+    loading = false; render();
+  }
+  nameInp.oninput = () => { nameEdited = true; validate(); };
+  $('pickCancel').onclick = () => d.close('cancel');
+  $('pickMkdir').onclick = async () => {
+    const name = await askName(`New folder in ${dir}`, '', 'Create');
+    if (name == null) return;
+    const p = joinPath(dir, name);
+    try { await tp.mkdir(p); log(`mkdir ${p}: ok`); await load(p); }
+    catch (e) { log(`mkdir ${p} failed: ${e.message}`); loadErr = e.message; validate(); }
+  };
+  return new Promise(resolve => {
+    let result = null;
+    d.querySelector('form').onsubmit = () => { result = { dir, plan: plan() }; };
+    d.onclose = () => resolve(d.returnValue === 'ok' ? result : null);
+    d.returnValue = ''; d.showModal();
+    if (single) { nameInp.focus(); selectStem(); }
+    load(cwd);
+  });
 }
 
 // ---------------- file operations ----------------
@@ -412,16 +777,28 @@ async function fetchBlob(path, size) {
     return blob;
   } finally { showProgress(null); }
 }
+function saveBlob(blob, name) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
 async function download(path, size) {
   if (busy) return;
   const name = baseName(path);
   setBusy(true);
-  try {
-    const blob = await fetchBlob(path, size);
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-  } catch (e) { log(`download ${name} failed: ${e.message}`); }
+  try { saveBlob(await fetchBlob(path, size), name); }
+  catch (e) { log(`download ${name} failed: ${e.message}`); }
   finally { setBusy(false); }
+}
+async function downloadMany(list) {
+  const files = list.filter(e => !e.d);
+  if (busy || !tp || !files.length) return;
+  setBusy(true);
+  try {
+    for (const e of files) {
+      try { saveBlob(await fetchBlob(joinPath(cwd, e.n), e.s), e.n); }
+      catch (err) { log(`download ${e.n} failed: ${err.message}`); alert(`Download of ${e.n} failed:\n${err.message}`); break; }
+    }
+  } finally { setBusy(false); }
 }
 async function preview(path, name, size) {
   if (busy) return;
@@ -435,42 +812,53 @@ async function preview(path, name, size) {
   finally { setBusy(false); }
 }
 
-// Runs one device operation with busy state, logging and a listing refresh.
-async function op(label, fn) {
-  if (busy || !tp) return;
+// Runs device operations one after another with busy state and logging, then refreshes the listing.
+// tasks: [{label, run}]. A failure mid-batch asks whether to continue with the rest.
+async function runBatch(tasks) {
+  if (busy || !tp || !tasks.length) return;
   setBusy(true);
-  const t0 = performance.now();
-  try { const r = await fn(); log(`${label}: ok${r && r.copied != null ? ` (${fmtSize(r.copied)})` : ''} in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
-  catch (e) { log(`${label} failed: ${e.message}`); alert(`${label} failed:\n${e.message}`); }
-  finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
+  try {
+    for (let k = 0; k < tasks.length; k++) {
+      const t = tasks[k], t0 = performance.now();
+      try { const r = await t.run(); log(`${t.label}: ok${r && r.copied != null ? ` (${fmtSize(r.copied)})` : ''} in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
+      catch (e) {
+        log(`${t.label} failed: ${e.message}`);
+        const left = tasks.length - k - 1;
+        if (!left) { alert(`${t.label} failed:\n${e.message}`); break; }
+        if (!confirm(`${t.label} failed:\n${e.message}\n\nContinue with the remaining ${left} item${left > 1 ? 's' : ''}?`)) break;
+      }
+    }
+  } finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
 }
-const validName = n => n && !/[\\/:*?"<>|\t\r\n]/.test(n) && n !== '.' && n !== '..';
 
-function renameEntry(e) {
-  const name = prompt(`Rename "${e.n}" to:`, e.n);
+async function renameEntry(e) {
+  if (busy || !tp) return;
+  const name = await askName(`Rename "${e.n}"`, e.n, 'Rename');
   if (name == null || name === e.n) return;
-  if (!validName(name)) return alert('Invalid name.');
-  op(`rename ${e.n} → ${name}`, () => tp.move(joinPath(cwd, e.n), joinPath(cwd, name)));
+  if (entries.some(x => x.n === name)) return alert(`"${name}" already exists in this folder.`);
+  runBatch([{ label: `rename ${e.n} → ${name}`, run: () => tp.move(joinPath(cwd, e.n), joinPath(cwd, name)) }]);
 }
-function moveEntry(e) {
-  const dst = prompt(`Move "${e.n}" to (full path):`, joinPath(cwd, e.n));
-  if (dst == null || dst === joinPath(cwd, e.n)) return;
-  op(`move ${e.n} → ${dst}`, () => tp.move(joinPath(cwd, e.n), dst));
+async function moveCopy(mode, list) {
+  if (busy || !tp || !list.length) return;
+  const items = list.map(e => ({ name: e.n, path: joinPath(cwd, e.n), isDir: !!e.d }));
+  const what = items.length === 1 ? `"${items[0].name}"` : `${items.length} items`;
+  const res = await pickFolder({ mode, items, title: `${mode === 'move' ? 'Move' : 'Copy'} ${what} to…`, okLabel: mode === 'move' ? 'Move here' : 'Copy here' });
+  if (!res) return;
+  const fn = mode === 'move' ? (s, d) => tp.move(s, d) : (s, d) => tp.copy(s, d);
+  runBatch(res.plan.map(p => ({ label: `${mode} ${baseName(p.src)} → ${p.dst}`, run: () => fn(p.src, p.dst) })));
 }
-function copyEntry(e) {
-  const dst = prompt(`Copy "${e.n}" to (full path):`, joinPath(cwd, 'Copy of ' + e.n));
-  if (dst == null) return;
-  op(`copy ${e.n} → ${dst}`, () => tp.copy(joinPath(cwd, e.n), dst));
+function deleteEntries(list) {
+  if (busy || !tp || !list.length) return;
+  const dirs = list.filter(e => e.d).length;
+  const what = list.length === 1 ? `${list[0].d ? 'folder' : 'file'} "${list[0].n}"` : `${list.length} items${dirs ? ` (${dirs} folder${dirs > 1 ? 's' : ''})` : ''}`;
+  if (!confirm(`Delete ${what}?${dirs ? '\nFolders are deleted with everything inside them.' : ''}\nThis cannot be undone.`)) return;
+  runBatch(list.map(e => ({ label: `delete ${e.n}`, run: () => tp.remove(joinPath(cwd, e.n)) })));
 }
-function deleteEntry(e) {
-  if (!confirm(`Delete ${e.d ? 'folder (and everything in it)' : 'file'} "${e.n}"?\nThis cannot be undone.`)) return;
-  op(`delete ${e.n}`, () => tp.remove(joinPath(cwd, e.n)));
-}
-$('btnMkdir').onclick = () => {
-  const name = prompt('New folder name:');
+$('btnMkdir').onclick = async () => {
+  if (busy || !tp) return;
+  const name = await askName(`New folder in ${cwd}`, '', 'Create');
   if (name == null) return;
-  if (!validName(name)) return alert('Invalid name.');
-  op(`mkdir ${name}`, () => tp.mkdir(joinPath(cwd, name)));
+  runBatch([{ label: `mkdir ${name}`, run: () => tp.mkdir(joinPath(cwd, name)) }]);
 };
 
 async function uploadFiles(files) {
@@ -481,27 +869,323 @@ async function uploadFiles(files) {
       if (!validName(file.name)) { log(`upload skipped (bad name): ${file.name}`); continue; }
       const path = joinPath(cwd, file.name);
       if (entries.some(e => e.n === file.name) && !confirm(`"${file.name}" already exists here. Overwrite?`)) { log(`upload skipped: ${file.name}`); continue; }
-      const t0 = performance.now();
-      showProgress(`${tp.kind}: uploading ${file.name} 0 / ${fmtSize(file.size)}`, 0);
-      try {
-        await tp.writeFile(path, file, sent => {
-          const s = (performance.now() - t0) / 1000;
-          showProgress(`${tp.kind}: uploading ${file.name} ${fmtSize(sent)} / ${fmtSize(file.size)} · ${fmtSize(sent / Math.max(s, .1))}/s`, file.size ? sent / file.size : 1);
-        });
-        log(`upload ${file.name}: ${fmtSize(file.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
-      } catch (e) { log(`upload ${file.name} failed: ${e.message}`); alert(`Upload of ${file.name} failed:\n${e.message}`); break; }
-      finally { showProgress(null); }
+      try { await putFile(path, file); }
+      catch (e) { log(`upload ${file.name} failed: ${e.message}`); alert(`Upload of ${file.name} failed:\n${e.message}`); break; }
     }
   } finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
 }
+// Upload one blob to a full path with progress; throws on failure.
+async function putFile(path, blob) {
+  const name = baseName(path), t0 = performance.now();
+  showProgress(`${tp.kind}: uploading ${name} 0 / ${fmtSize(blob.size)}`, 0);
+  try {
+    await tp.writeFile(path, blob, sent => {
+      const s = (performance.now() - t0) / 1000;
+      showProgress(`${tp.kind}: uploading ${name} ${fmtSize(sent)} / ${fmtSize(blob.size)} · ${fmtSize(sent / Math.max(s, .1))}/s`, blob.size ? sent / blob.size : 1);
+    });
+    log(`upload ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  } finally { showProgress(null); }
+}
 $('btnUpload').onclick = () => $('fileInput').click();
 $('fileInput').onchange = e => { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f); };
-{ const card = $('browser'); let depth = 0;
-  card.addEventListener('dragenter', e => { e.preventDefault(); depth++; card.classList.add('drop'); });
-  card.addEventListener('dragover',  e => { e.preventDefault(); });
-  card.addEventListener('dragleave', e => { if (--depth <= 0) { depth = 0; card.classList.remove('drop'); } });
-  card.addEventListener('drop',      e => { e.preventDefault(); depth = 0; card.classList.remove('drop'); uploadFiles([...e.dataTransfer.files]); });
+{ // Files dragged in from the desktop upload into cwd. Internal row drags are handled by the folder rows / crumbs.
+  const card = $('browser'); let depth = 0;
+  card.addEventListener('dragenter', e => { e.preventDefault(); if (isInternalDrag(e)) return; depth++; card.classList.add('drop'); });
+  card.addEventListener('dragover',  e => { e.preventDefault(); if (isInternalDrag(e)) e.dataTransfer.dropEffect = 'none'; });
+  card.addEventListener('dragleave', e => { if (isInternalDrag(e)) return; if (--depth <= 0) { depth = 0; card.classList.remove('drop'); } });
+  card.addEventListener('drop',      e => { e.preventDefault(); depth = 0; card.classList.remove('drop'); if (!isInternalDrag(e)) uploadFiles([...e.dataTransfer.files]); });
 }
+
+// ============================================================================
+// Video → MJPEG converter. ffmpeg.wasm is fetched from unpkg on first use.
+// Output matches thelastoutpostworkshop's ESP32-C6-LCD-1.47 video player:
+// raw concatenated baseline JPEGs, 172x320, read from /mjpeg on the card.
+// ============================================================================
+const FFMPEG_CDNS = [   // tried in order; pkg = @ffmpeg/ffmpeg UMD build, core = @ffmpeg/core ESM build
+  { name: 'unpkg',    pkg: 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/',              core: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/' },
+  { name: 'jsDelivr', pkg: 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/', core: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/' },
+];
+const PLAYER_FOLDER = '/mjpeg';
+const PLAYER_MAX_FILES = 20;
+const MAX_FRAME_BYTES = 172 * 320 * 2 / 5;      // the player's per-frame read buffer (22016 B)
+const conv = { file: null, meta: null, ffmpeg: null, running: false, cancelled: false, result: null };
+
+const convLog = m => { const el = $('cvLog'); el.textContent += m + '\n'; if (el.textContent.length > 20000) el.textContent = el.textContent.slice(-10000); el.scrollTop = el.scrollHeight; };
+const convStatus = (m, frac) => { $('cvStatus').textContent = m || ''; const p = $('cvProgress'); p.hidden = frac == null; if (frac != null) p.value = Math.round(Math.min(1, Math.max(0, frac)) * 100); };
+const stemOf = n => n.replace(/\.[^.]+$/, '');
+const extOf  = n => (/\.[^.]+$/.exec(n) || [''])[0].toLowerCase();
+
+function convOptions() {
+  const [w, h] = $('cvSize').value.split('x').map(Number);
+  return { w, h, rotate: $('cvRotate').value, fit: $('cvFit').value, fps: +$('cvFps').value, q: +$('cvQ').value,
+           start: Math.max(0, +$('cvStart').value || 0), dur: Math.max(0, +$('cvDur').value || 0),
+           name: ($('cvName').value.trim() || (conv.file ? stemOf(conv.file.name) : 'video')) };
+}
+function convFilter(o) {
+  const f = [];
+  if (o.rotate === 'cw') f.push('transpose=1'); else if (o.rotate === 'ccw') f.push('transpose=2'); else if (o.rotate === '180') f.push('transpose=1,transpose=1');
+  f.push(`fps=${o.fps}`);
+  const s = `${o.w}:${o.h}`;
+  if (o.fit === 'crop')     f.push(`scale=${s}:force_original_aspect_ratio=increase:flags=lanczos`, `crop=${s}`);
+  else if (o.fit === 'pad') f.push(`scale=${s}:force_original_aspect_ratio=decrease:flags=lanczos`, `pad=${s}:(ow-iw)/2:(oh-ih)/2:black`);
+  else                      f.push(`scale=${s}:flags=lanczos`);
+  return f.join(',');
+}
+// ffmpeg argument list. Same list drives the in-browser run and the printed shell command.
+function convArgs(o, inName, outName) {
+  const a = ['-y'];
+  if (o.start) a.push('-ss', String(o.start));
+  if (o.dur)   a.push('-t', String(o.dur));
+  a.push('-i', inName, '-an', '-vf', convFilter(o), '-pix_fmt', 'yuvj420p', '-q:v', String(o.q), '-c:v', 'mjpeg', '-f', 'mjpeg', outName);
+  return a;
+}
+function convCommand(o) {
+  const q = s => /[^\w.\-\/:=]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s;   // commas and parentheses need quoting in every shell
+  return 'ffmpeg ' + convArgs(o, conv.file ? conv.file.name : 'input.mp4', o.name + '.mjpeg').map(q).join(' ');
+}
+
+function setConvFile(file) {
+  conv.file = file; conv.meta = null; conv.result = null; conv.previewKicked = false; $('cvResult').hidden = true;
+  $('cvName').value = stemOf(file.name).replace(/[\\/:*?"<>|]/g, '_');
+  $('cvInfo').textContent = `${file.name} · ${fmtSize(file.size)}${file.size > 500 * 1048576 ? ' · large: browser conversion needs the whole file in memory, consider trimming or a local ffmpeg' : ''}`;
+  const v = $('cvVideo');
+  if (v.src) URL.revokeObjectURL(v.src);
+  $('cvPreviewNote').textContent = 'Loading preview…';
+  v.src = URL.createObjectURL(file);
+  refreshConv();
+}
+$('cvVideo').addEventListener('loadedmetadata', () => {
+  const v = $('cvVideo');
+  conv.meta = { duration: v.duration, w: v.videoWidth, h: v.videoHeight };
+  $('cvInfo').textContent += ` · ${v.videoWidth} × ${v.videoHeight} · ${v.duration.toFixed(1)} s`;
+});
+$('cvVideo').addEventListener('loadeddata', seekPreview);        // first frame is decoded from here on
+$('cvVideo').addEventListener('error', () => { $('cvPreviewNote').textContent = 'This browser cannot decode the video for a preview. Conversion may still work.'; });
+$('cvVideo').addEventListener('seeked', async () => {
+  drawPreview();
+  if (!previewBlank() || conv.previewKicked) return;
+  // Some browsers paint nothing into a canvas until playback has started once: play one frame, then seek back.
+  conv.previewKicked = true;
+  const v = $('cvVideo');
+  try { await v.play(); await new Promise(r => v.requestVideoFrameCallback ? v.requestVideoFrameCallback(r) : setTimeout(r, 200)); v.pause(); } catch {}
+  seekPreview();
+});
+function seekPreview() {
+  const v = $('cvVideo'); if (!conv.meta) return;
+  const t = Math.min(convOptions().start, Math.max(0, v.duration - 0.1));
+  v.currentTime = Math.abs(v.currentTime - t) < 0.01 ? t + 0.01 : t;   // always a real seek, so 'seeked' fires with a decoded frame
+}
+function previewBlank() {
+  const c = $('cvCanvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  for (let i = 0; i < d.length; i += 64) if (d[i] + d[i + 1] + d[i + 2] > 30) return false;
+  return true;
+}
+function drawPreview() {
+  const v = $('cvVideo'), c = $('cvCanvas'), o = convOptions();
+  c.width = o.w; c.height = o.h;
+  const ctx = c.getContext('2d'); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, o.w, o.h);
+  if (!conv.meta) return;
+  const sw = v.videoWidth, sh = v.videoHeight, quarter = o.rotate === 'cw' || o.rotate === 'ccw';
+  const rw = quarter ? sh : sw, rh = quarter ? sw : sh;                       // source size after rotation
+  ctx.save(); ctx.translate(o.w / 2, o.h / 2);
+  if (o.fit === 'stretch') ctx.scale(o.w / rw, o.h / rh);
+  else { const s = o.fit === 'crop' ? Math.max(o.w / rw, o.h / rh) : Math.min(o.w / rw, o.h / rh); ctx.scale(s, s); }
+  ctx.rotate(o.rotate === 'cw' ? Math.PI / 2 : o.rotate === 'ccw' ? -Math.PI / 2 : o.rotate === '180' ? Math.PI : 0);
+  try { ctx.drawImage(v, -sw / 2, -sh / 2, sw, sh); } catch {}
+  ctx.restore();
+  $('cvPreviewNote').textContent = `${o.w} × ${o.h} at ${v.currentTime.toFixed(1)} s`;
+}
+function refreshConv() {
+  const o = convOptions();
+  $('cvQVal').textContent = o.q;
+  $('cvCmd').textContent = convCommand(o);
+  $('cvConvert').disabled = !conv.file || conv.running;
+  $('cvCancel').hidden = !conv.running;
+  for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvStart', 'cvDur', 'cvName', 'cvPick']) $(id).disabled = conv.running;
+  $('cvUpload').disabled = !tp || busy;
+  if (conv.meta) drawPreview();
+}
+for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvDur', 'cvName']) $(id).addEventListener('input', refreshConv);
+$('cvStart').addEventListener('input', () => { refreshConv(); seekPreview(); });
+$('cvPick').onclick = () => $('cvFile').click();
+$('cvFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) setConvFile(f); };
+$('cvCopy').onclick = async () => { try { await navigator.clipboard.writeText($('cvCmd').textContent); $('cvCopy').textContent = 'Copied'; setTimeout(() => $('cvCopy').textContent = 'Copy', 1200); } catch { alert('Clipboard unavailable. Select the command text and copy it.'); } };
+{ const card = $('convCard'); let depth = 0; const ext = e => !isInternalDrag(e);
+  card.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); if (!ext(e)) return; depth++; card.classList.add('drop'); });
+  card.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); });
+  card.addEventListener('dragleave', e => { e.stopPropagation(); if (!ext(e)) return; if (--depth <= 0) { depth = 0; card.classList.remove('drop'); } });
+  card.addEventListener('drop',      e => { e.preventDefault(); e.stopPropagation(); depth = 0; card.classList.remove('drop'); const f = [...e.dataTransfer.files][0]; if (f) { $('convDetails').open = true; setConvFile(f); } });
+}
+
+// Fetch a URL into a blob: URL so the worker and core can be loaded cross-origin.
+// `check(headerBytes, totalBytes)` throws when the download is not what we expect (e.g. an HTML error page).
+async function toBlobURL(url, type, onBytes, check) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${url}`);
+  const parts = []; let got = 0; const reader = r.body.getReader();
+  for (;;) { const { value, done } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes?.(got); }
+  check?.(parts[0] || new Uint8Array(0), got);
+  return URL.createObjectURL(new Blob(parts, { type }));
+}
+const loadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('cannot load ' + src)); document.head.appendChild(s); });
+const lastLogLine = () => $('cvLog').textContent.trim().split('\n').pop() || '';
+
+// A browser with WebAssembly blocked makes the ffmpeg core hang instead of failing, so test it up front.
+function wasmPrecheck() {
+  try { new WebAssembly.Module(new Uint8Array([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0])); }
+  catch { throw new Error('WebAssembly is disabled in this browser. Microsoft Edge does this in "Enhanced security mode" (Settings → Privacy, search and services → Enhanced security): add this site as an exception, or use Chrome. The local ffmpeg command below works regardless.'); }
+}
+// Download the three ffmpeg.wasm files, trying each CDN in turn and validating what comes back.
+async function fetchFFmpegFiles() {
+  const isJs   = u8 => { if (u8[0] === 0x3C) throw new Error('got an HTML page instead of JavaScript'); };
+  const isWasm = (u8, total) => { if (!(u8[0] === 0 && u8[1] === 0x61 && u8[2] === 0x73 && u8[3] === 0x6D)) throw new Error('not a WebAssembly file'); if (total < 10e6) throw new Error(`ffmpeg-core.wasm is truncated (${fmtSize(total)})`); };
+  let lastErr;
+  for (const cdn of FFMPEG_CDNS) {
+    try {
+      convStatus(`Downloading ffmpeg.wasm from ${cdn.name}…`);
+      if (!window.FFmpegWASM) await loadScript(cdn.pkg + 'ffmpeg.js');
+      const [classWorkerURL, coreURL, wasmURL] = await Promise.all([
+        toBlobURL(cdn.pkg + '814.ffmpeg.js', 'text/javascript', null, isJs),
+        toBlobURL(cdn.core + 'ffmpeg-core.js', 'text/javascript', null, isJs),
+        toBlobURL(cdn.core + 'ffmpeg-core.wasm', 'application/wasm', n => convStatus(`Downloading ffmpeg.wasm from ${cdn.name}… ${fmtSize(n)}`), isWasm),
+      ]);
+      return { classWorkerURL, coreURL, wasmURL, cdn: cdn.name };
+    } catch (e) { lastErr = e; convLog(`${cdn.name}: ${e.message}`); }
+  }
+  throw new Error(`Could not download ffmpeg.wasm (${lastErr.message}). Check the network connection, ad blockers or a content filter.`);
+}
+async function loadFFmpeg() {
+  if (conv.ffmpeg) return conv.ffmpeg;
+  wasmPrecheck();
+  const t0 = performance.now();
+  const { classWorkerURL, coreURL, wasmURL, cdn } = await fetchFFmpegFiles();
+  const ff = new FFmpegWASM.FFmpeg();
+  ff.on('log', ({ message }) => convLog(message));
+  ff.on('progress', ({ time }) => {
+    const o = convOptions(), total = o.dur || (conv.meta ? Math.max(0, conv.meta.duration - o.start) : 0);
+    const s = time / 1e6;
+    convStatus(`Converting… ${s.toFixed(1)} s${total ? ` / ${total.toFixed(1)} s` : ''}`, total ? s / total : null);
+  });
+  convStatus('Starting ffmpeg…');
+  // ffmpeg.wasm never rejects load() when its worker dies (script blocked, import failure, CSP…),
+  // so watch the worker it creates and give up after a while with a useful message.
+  const RealWorker = window.Worker;
+  let failWorker; const workerFailed = new Promise((_, rej) => { failWorker = rej; });
+  window.Worker = function (url, opts) {
+    const w = new RealWorker(url, opts);
+    w.addEventListener('error', e => { convLog(`worker error: ${e.message || e.type}`); failWorker(new Error(`ffmpeg worker failed: ${e.message || 'script error'}`)); });
+    return w;
+  };
+  try {
+    await Promise.race([
+      ff.load({ classWorkerURL, coreURL, wasmURL }),
+      workerFailed,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('ffmpeg did not start within 90 s')), 90000)),
+    ]);
+  } catch (e) {
+    try { ff.terminate(); } catch {}
+    for (const u of [classWorkerURL, coreURL, wasmURL]) URL.revokeObjectURL(u);
+    const tail = lastLogLine();
+    throw new Error(`${e.message}${tail ? ` (last ffmpeg message: ${tail})` : ''}. Check the "ffmpeg output" section and the browser console (F12); a browser extension or security policy that blocks workers or WebAssembly causes this.`);
+  } finally { window.Worker = RealWorker; }
+  log(`ffmpeg.wasm loaded from ${cdn} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  conv.ffmpeg = ff; conv.cdn = cdn;
+  return ff;
+}
+
+// Walk a raw MJPEG stream: frame count, largest frame, first frame, its dimensions and JPEG type.
+function mjpegStats(u8) {
+  let frames = 0, max = 0, i = 0, first = null; const n = u8.length;
+  while (i < n - 1) {
+    if (u8[i] !== 0xFF || u8[i + 1] !== 0xD8) { i++; continue; }
+    let j = i + 2;
+    while (j < n - 1 && !(u8[j] === 0xFF && u8[j + 1] === 0xD9)) j++;
+    const size = j + 2 - i;
+    frames++; if (size > max) max = size; if (!first) first = u8.subarray(i, j + 2);
+    i = j + 2;
+  }
+  return { bytes: n, frames, max, avg: frames ? n / frames : 0, first, ...(first ? jpegInfo(first) : {}) };
+}
+function jpegInfo(u8) {
+  let p = 2;
+  while (p + 9 < u8.length && u8[p] === 0xFF) {
+    const m = u8[p + 1];
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC)
+      return { width: (u8[p + 7] << 8) | u8[p + 8], height: (u8[p + 5] << 8) | u8[p + 6], progressive: m === 0xC2 || m === 0xC6 || m === 0xCA || m === 0xCE };
+    if (m === 0xD8 || (m >= 0xD0 && m <= 0xD7)) { p += 2; continue; }
+    p += 2 + ((u8[p + 2] << 8) | u8[p + 3]);
+  }
+  return {};
+}
+
+async function convertVideo() {
+  if (conv.running || !conv.file) return;
+  const o = convOptions();
+  if (!validName(o.name + '.mjpeg')) return alert('Invalid output name.');
+  conv.running = true; conv.cancelled = false; conv.result = null; $('cvResult').hidden = true; $('cvLog').textContent = '';
+  refreshConv();
+  const t0 = performance.now(), inName = 'in' + (extOf(conv.file.name) || '.bin'), outName = 'out.mjpeg';
+  try {
+    const ff = await loadFFmpeg();
+    convStatus('Reading video into memory…');
+    await ff.writeFile(inName, new Uint8Array(await conv.file.arrayBuffer()));
+    convStatus('Converting…', 0);
+    const rc = await ff.exec(convArgs(o, inName, outName));
+    if (rc !== 0) throw new Error(`ffmpeg exited with code ${rc} (see "ffmpeg output" below)`);
+    const data = await ff.readFile(outName);
+    try { await ff.deleteFile(inName); await ff.deleteFile(outName); } catch {}
+    if (!data.length) throw new Error('ffmpeg produced no output (see "ffmpeg output" below)');
+    const stats = mjpegStats(data);
+    conv.result = { blob: new Blob([data], { type: 'video/x-motion-jpeg' }), name: o.name + '.mjpeg', stats, opts: o, seconds: (performance.now() - t0) / 1000 };
+    renderConvResult();
+    convStatus(`Done in ${conv.result.seconds.toFixed(1)} s`);
+    log(`convert ${conv.file.name} → ${conv.result.name}: ${stats.frames} frames, ${fmtSize(data.length)} in ${conv.result.seconds.toFixed(1)} s`);
+  } catch (e) {
+    if (conv.cancelled) convStatus('Cancelled');
+    else { convStatus('Failed: ' + e.message); log('convert failed: ' + e.message); $('cvLogDetails').open = true; }
+  } finally { conv.running = false; refreshConv(); }
+}
+function renderConvResult() {
+  const r = conv.result, s = r.stats, o = r.opts;
+  const secs = s.frames / o.fps;
+  const rows = [
+    ['File', `${r.name} · ${fmtSize(s.bytes)}`],
+    ['Frames', `${s.frames} at ${o.fps} fps · ${secs.toFixed(1)} s`],
+    ['Frame size', s.width ? `${s.width} × ${s.height}` : 'unknown'],
+    ['JPEG frame bytes', `avg ${fmtSize(s.avg)} · max ${fmtSize(s.max)} · limit ${fmtSize(MAX_FRAME_BYTES)}`],
+    ['Data rate', `${fmtSize(s.bytes / Math.max(secs, .1))}/s from the card`],
+  ];
+  $('cvStats').innerHTML = rows.map(([k, v]) => `<tr><td>${k}</td><td>${escapeHtml(v)}</td></tr>`).join('');
+  const warn = [];
+  if (!s.frames) warn.push('No JPEG frames found in the output.');
+  if (s.max > MAX_FRAME_BYTES) warn.push(`Largest frame exceeds the player's ${fmtSize(MAX_FRAME_BYTES)} read buffer; raise the quality number (e.g. ${Math.min(31, o.q + 2)}) or lower the frame rate and convert again.`);
+  if (s.progressive) warn.push('Progressive JPEG detected; the player needs baseline frames.');
+  if (s.width && !((s.width === 172 && s.height === 320) || (s.width === 320 && s.height === 172))) warn.push('Frame size is not 172 × 320.');
+  const w = $('cvWarn'); w.textContent = warn.join(' '); w.className = 'small ' + (warn.length ? (s.max > MAX_FRAME_BYTES * 1.5 || !s.frames ? 'err' : 'warn') : '');
+  if (!warn.length) w.textContent = 'Looks good for the player.';
+  const img = $('cvFirst'); if (img.src) URL.revokeObjectURL(img.src);
+  img.src = s.first ? URL.createObjectURL(new Blob([s.first], { type: 'image/jpeg' })) : '';
+  $('cvResult').hidden = false; refreshConv();
+}
+$('cvConvert').onclick = convertVideo;
+$('cvCancel').onclick = () => { if (!conv.running || !conv.ffmpeg) return; conv.cancelled = true; conv.ffmpeg.terminate(); conv.ffmpeg = null; };
+$('cvDownload').onclick = () => { if (conv.result) saveBlob(conv.result.blob, conv.result.name); };
+$('cvUpload').onclick = async () => {
+  const r = conv.result; if (!r || !tp || busy) return;
+  setBusy(true); refreshConv();
+  try {
+    let listing;
+    try { listing = await tp.list(PLAYER_FOLDER); }
+    catch { await tp.mkdir(PLAYER_FOLDER); log(`mkdir ${PLAYER_FOLDER}: ok`); listing = { entries: [] }; }
+    const ents = listing.entries || [];
+    if (ents.some(e => e.n === r.name) && !confirm(`"${r.name}" already exists in ${PLAYER_FOLDER}. Overwrite?`)) return;
+    const videos = ents.filter(e => !e.d && /\.mjpeg$/i.test(e.n) && e.n !== r.name).length;
+    if (videos >= PLAYER_MAX_FILES && !confirm(`${PLAYER_FOLDER} already holds ${videos} videos; the player indexes at most ${PLAYER_MAX_FILES}. Upload anyway?`)) return;
+    await putFile(joinPath(PLAYER_FOLDER, r.name), r.blob);
+  } catch (e) { log(`upload ${r.name} failed: ${e.message}`); alert(`Upload of ${r.name} failed:\n${e.message}`); }
+  finally { setBusy(false); await navigate(PLAYER_FOLDER); await refreshInfo(); refreshConv(); }
+};
+refreshConv();
 
 // ---------------- connection buttons ----------------
 async function connectWith(Transport, statusText) {
