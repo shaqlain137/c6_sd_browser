@@ -6,127 +6,260 @@
 <title>C6 SD Browser</title>
 <style>
   :root {
-    --bg: #f6f7f9; --card: #ffffff; --fg: #1a1d21; --muted: #5f6672; --line: #e2e5ea;
-    --accent: #2563eb; --accent-fg: #fff; --ok: #15803d; --warn: #b45309; --err: #b91c1c;
-    --row-hover: #f0f3f8; --drop: #dbeafe; --sel: #e8f0fe; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --bg: #f5f5f7; --card: #ffffff; --fg: #1d1d1f; --muted: #6e6e73; --line: #d2d2d7; --fill: #e8e8ed; --fill-2: #f5f5f7;
+    --accent: #0071e3; --accent-hover: #0077ed; --accent-fg: #ffffff; --ok: #1d9a4b; --warn: #b25000; --err: #e30000;
+    --row-hover: #f5f5f7; --drop: #e8f0fe; --sel: #eaf2ff; --nav: rgba(255,255,255,.72); --nav-line: rgba(0,0,0,.08);
+    --ring: rgba(0,113,227,.28); --shadow: 0 30px 80px rgba(0,0,0,.28);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --radius: 18px;
     color-scheme: light dark;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #0f1216; --card: #171b21; --fg: #e6e8eb; --muted: #9aa3ae; --line: #2a313b;
-            --accent: #3b82f6; --ok: #4ade80; --warn: #fbbf24; --err: #f87171; --row-hover: #1e242c; --drop: #1e3a5f; --sel: #1b2a44; }
+    :root { --bg: #000000; --card: #1d1d1f; --fg: #f5f5f7; --muted: #86868b; --line: #424245; --fill: #333336; --fill-2: #2c2c2e;
+            --accent: #2997ff; --accent-hover: #3ea0ff; --ok: #30d158; --warn: #ffd60a; --err: #ff453a;
+            --row-hover: #2a2a2d; --drop: #1c2a3f; --sel: #1f2d45; --nav: rgba(29,29,31,.72); --nav-line: rgba(255,255,255,.1);
+            --ring: rgba(41,151,255,.35); --shadow: 0 30px 80px rgba(0,0,0,.6); }
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 16px; }
-  .wrap { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
-  header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  h1 { font-size: 18px; margin: 0; }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
-  .card.drop { outline: 2px dashed var(--accent); background: var(--drop); }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  button { background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 8px; padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; }
-  button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--line); }
-  button.danger { color: var(--err); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  input[type=text] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; }
-  input[type=checkbox] { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: var(--accent); }
-  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); color: var(--muted); }
-  .pill.ok { color: var(--ok); border-color: currentColor; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, "Segoe UI", Arial, sans-serif;
+    letter-spacing: -0.022em; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1, h2, h3 { margin: 0; font-weight: 600; }
+  h1 { font-size: 48px; line-height: 1.08; letter-spacing: -0.003em; }
+  h2 { font-size: 28px; line-height: 1.14; letter-spacing: .007em; }
+  h3 { font-size: 19px; line-height: 1.2; letter-spacing: -0.02em; }
   .muted { color: var(--muted); }
-  .small { font-size: 12px; }
-  .crumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-family: var(--mono); font-size: 13px; }
-  .crumbs a { color: var(--accent); text-decoration: none; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
-  .crumbs a.dragover { background: var(--drop); outline: 2px solid var(--accent); }
+  .small { font-size: 14px; letter-spacing: -0.016em; }
+  .tiny { font-size: 12px; letter-spacing: -0.01em; }
+
+  /* ---- top bar + hero ---- */
+  .nav { position: sticky; top: 0; z-index: 5; height: 48px; background: var(--nav); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--nav-line); }
+  .nav .in { max-width: 980px; margin: 0 auto; height: 100%; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+  .hero { text-align: center; padding: 64px 22px 32px; }
+  .hero p.sub { font-size: 21px; line-height: 1.38; letter-spacing: .011em; color: var(--muted); margin: 10px auto 28px; max-width: 640px; }
+  .hero .row { justify-content: center; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px 60px; display: flex; flex-direction: column; gap: 20px; }
+  footer.foot { text-align: center; color: var(--muted); font-size: 12px; padding: 0 22px 40px; }
+
+  /* ---- cards, rows, buttons ---- */
+  .card { background: var(--card); border-radius: var(--radius); padding: 28px; }
+  .card.drop { outline: 2px dashed var(--accent); outline-offset: -8px; background: var(--drop); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button {
+    font: inherit; font-size: 15px; line-height: 1.2; font-weight: 500; letter-spacing: -0.01em;
+    background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 980px; padding: 10px 20px; cursor: pointer;
+    transition: background .15s ease, opacity .15s ease, transform .05s ease;
+  }
+  button:hover { background: var(--accent-hover); }
+  button:active { transform: scale(.98); }
+  button.secondary { background: var(--fill); color: var(--fg); }
+  button.secondary:hover { background: var(--line); }
+  button.danger { color: var(--err); }
+  button:disabled { opacity: .4; cursor: default; transform: none; }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--ring); }
+  .hero button { font-size: 17px; padding: 12px 24px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 980px; font-size: 12px; font-weight: 600; letter-spacing: -0.01em; background: var(--fill); color: var(--muted); }
+  .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .6; }
+  .pill.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+  .pill.ok::before { opacity: 1; }
+  #caps { margin-top: 18px; }
+  #caps div { display: inline-block; margin: 0 10px; }
+  input[type=text], input[type=number], select {
+    font: inherit; font-size: 15px; letter-spacing: -0.016em; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--card); color: var(--fg); width: 100%; transition: border-color .15s, box-shadow .15s;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus { border-color: var(--accent); }
+  input[type=checkbox] { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+  input[type=range] { accent-color: var(--accent); }
+  progress { appearance: none; -webkit-appearance: none; width: 100%; height: 6px; border: 0; border-radius: 3px; background: var(--fill); overflow: hidden; }
+  progress::-webkit-progress-bar { background: var(--fill); border-radius: 3px; }
+  progress::-webkit-progress-value { background: var(--accent); border-radius: 3px; transition: width .2s; }
+  progress::-moz-progress-bar { background: var(--accent); border-radius: 3px; }
+
+  /* ---- icons (SVG masks, tinted with currentColor) ---- */
+  .ic { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 10px; background: currentColor; -webkit-mask: var(--svg) center / contain no-repeat; mask: var(--svg) center / contain no-repeat; }
+  .ic.folder { color: var(--accent); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 6.5A2.5 2.5 0 0 1 5.5 4h4.1c.7 0 1.3.3 1.8.7L13 6.3h5.5A2.5 2.5 0 0 1 21 8.8v8.7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z'/%3E%3C/svg%3E"); }
+  .ic.file { color: var(--muted); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 2.5h6.8L19 8.2v11.3a2 2 0 0 1-2 2h-10.5a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2zm6.5 1.5v4.5h4.5z'/%3E%3C/svg%3E"); }
+  .ic.up { color: var(--muted); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4.5l-7 7 1.5 1.5 4.5-4.5V20h2V8.5l4.5 4.5 1.5-1.5z'/%3E%3C/svg%3E"); }
+
+  /* ---- file browser ---- */
+  .crumbs { display: flex; flex-wrap: wrap; gap: 2px; align-items: center; font-size: 15px; letter-spacing: -0.016em; }
+  .crumbs a { color: var(--accent); cursor: pointer; padding: 3px 7px; border-radius: 8px; }
+  .crumbs a:hover { background: var(--fill-2); text-decoration: none; }
+  .crumbs a.dragover { background: var(--drop); box-shadow: 0 0 0 2px var(--accent); }
+  .crumbs .sep { color: var(--line); padding: 0 2px; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  th { font-size: 12px; color: var(--muted); font-weight: 600; }
-  th.chk, td.chk { width: 28px; padding-right: 0; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  tr.entry { cursor: pointer; }
+  th, td { text-align: left; padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: 0; }
+  th { font-size: 12px; font-weight: 600; letter-spacing: -0.01em; color: var(--muted); padding-top: 4px; padding-bottom: 8px; }
+  th.chk, td.chk { width: 34px; padding-right: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+  tr.entry { cursor: pointer; transition: background .1s; }
   tr.entry:hover { background: var(--row-hover); }
   tr.entry.selected { background: var(--sel); }
-  tr.entry.dragover { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--drop); }
+  tr.entry.dragover { background: var(--drop); box-shadow: inset 0 0 0 2px var(--accent); }
   tr.entry[draggable] { user-select: none; }
-  .name { font-family: var(--mono); font-size: 13px; word-break: break-all; }
-  .name .ic { display: inline-block; width: 1.4em; }
+  tr.entry td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
+  tr.entry td:last-child  { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
+  .name { font-size: 15px; letter-spacing: -0.016em; word-break: break-all; }
   .actions { white-space: nowrap; text-align: right; }
-  .actions button { padding: 3px 7px; font-size: 12px; margin-left: 2px; }
-  #selbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--sel); }
-  #selbar button { padding: 5px 10px; font-size: 13px; }
-  progress { width: 100%; height: 8px; }
-  #log { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; max-height: 160px; overflow: auto; color: var(--muted); margin: 0; }
-  #preview img { max-width: 100%; border-radius: 6px; }
-  #preview pre { max-height: 360px; overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; font-size: 12px; }
-  /* dialogs */
-  dialog { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--fg); padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
-  dialog::backdrop { background: rgba(0,0,0,.45); }
-  dialog form { display: flex; flex-direction: column; gap: 10px; padding: 16px; margin: 0; }
-  dialog h2 { font-size: 15px; margin: 0; word-break: break-all; }
-  dialog footer { display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+  .actions button { padding: 5px 11px; font-size: 12px; margin-left: 4px; opacity: 0; transition: opacity .12s; }
+  tr.entry:hover .actions button, tr.entry.selected .actions button, .actions button:focus-visible { opacity: 1; }
+  @media (hover: none) { .actions button { opacity: 1; } }
+  #selbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; padding: 8px 8px 8px 18px; border-radius: 980px; background: var(--sel); font-size: 15px; }
+  #selbar button { padding: 7px 14px; font-size: 13px; }
+  #progressWrap { margin-bottom: 14px; }
+  .drophint { margin: 16px 0 0; }
+  #preview { margin-top: 16px; }
+  #preview img { max-width: 100%; border-radius: 12px; }
+  #preview pre { max-height: 360px; overflow: auto; background: var(--fill-2); padding: 14px 16px; border-radius: 12px; font: 13px/1.5 var(--mono); }
+  #log { font: 12px/1.6 var(--mono); white-space: pre-wrap; max-height: 160px; overflow: auto; color: var(--muted); margin: 0; }
+
+  /* ---- dialogs ---- */
+  dialog { border: 0; border-radius: 18px; background: var(--card); color: var(--fg); padding: 0; width: min(560px, calc(100vw - 32px)); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(0,0,0,.4); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+  dialog form { display: flex; flex-direction: column; gap: 14px; padding: 26px 28px; margin: 0; }
+  dialog h2 { font-size: 21px; line-height: 1.2; letter-spacing: -0.02em; word-break: break-all; }
+  dialog footer { display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; margin-top: 4px; }
   dialog footer .dest { flex: 1 1 100%; }
-  .picklist { border: 1px solid var(--line); border-radius: 8px; max-height: min(320px, 45vh); overflow: auto; }
-  .picklist .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13px; word-break: break-all; }
+  .picklist { border: 1px solid var(--line); border-radius: 12px; max-height: min(320px, 45vh); overflow: auto; }
+  .picklist .item { display: flex; align-items: center; padding: 11px 14px; cursor: pointer; border-bottom: 1px solid var(--line); font-size: 15px; letter-spacing: -0.016em; word-break: break-all; }
   .picklist .item:last-child { border-bottom: 0; }
   .picklist .item:hover { background: var(--row-hover); }
-  .picklist .item.disabled { opacity: .4; cursor: not-allowed; }
-  .picklist .item .tag { margin-left: auto; font: 11px system-ui, sans-serif; color: var(--muted); white-space: nowrap; }
-  .picklist .empty { padding: 12px; color: var(--muted); font-size: 13px; }
-  .hint { min-height: 1.3em; font-size: 12px; color: var(--muted); }
+  .picklist .item.disabled { opacity: .4; cursor: default; }
+  .picklist .item .tag { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; padding-left: 10px; }
+  .picklist .empty { padding: 16px; color: var(--muted); font-size: 14px; }
+  .hint { min-height: 1.3em; font-size: 13px; color: var(--muted); }
   .hint.err { color: var(--err); }
-  .dest { font-family: var(--mono); font-size: 12px; color: var(--muted); word-break: break-all; }
-  label.field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-  select, input[type=number] { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); width: 100%; }
-  /* converter */
-  summary { cursor: pointer; font-weight: 600; }
-  .conv-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
-  .conv-opts { display: flex; flex-direction: column; gap: 8px; }
-  .conv-preview { display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 180px; }
-  .offscreen { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }   /* rendered, so frames get painted for the preview */
-  #cvCanvas, #cvFirst { background: #000; border: 1px solid var(--line); border-radius: 6px; max-width: 100%; }
+  .dest { font: 12px/1.5 var(--mono); color: var(--muted); word-break: break-all; }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+
+  /* ---- converter ---- */
+  summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ''; width: 9px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); margin-left: auto; transition: transform .2s; align-self: center; }
+  details[open] > summary::after { transform: rotate(45deg); }
+  details[open] > summary { margin-bottom: 14px; }
+  .lead { max-width: 720px; margin: 0 0 18px; color: var(--muted); }
+  .conv-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: start; }
+  .conv-opts { display: flex; flex-direction: column; gap: 12px; }
+  .conv-preview { display: flex; flex-direction: column; gap: 8px; align-items: center; min-width: 200px; }
+  #cvCanvas, #cvFirst { background: #000; border-radius: 12px; max-width: 100%; box-shadow: 0 0 0 1px var(--line); }
   #cvFirst { max-height: 320px; }
-  pre.cmd { flex: 1; margin: 0; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; background: var(--bg); padding: 8px 10px; border-radius: 6px; user-select: all; }
-  #cvLog { font-family: var(--mono); white-space: pre-wrap; max-height: 200px; overflow: auto; color: var(--muted); margin: 6px 0 0; }
-  table.stats td { padding: 3px 8px 3px 0; border: 0; }
+  pre.cmd { flex: 1; margin: 0; font: 12px/1.6 var(--mono); white-space: pre-wrap; word-break: break-all; background: var(--fill-2); padding: 12px 14px; border-radius: 12px; user-select: all; }
+  .offscreen { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  #cvLog { font: 12px/1.6 var(--mono); white-space: pre-wrap; max-height: 200px; overflow: auto; color: var(--muted); margin: 8px 0 0; }
+  table.stats td { padding: 5px 12px 5px 0; border: 0; font-size: 15px; }
   table.stats td:first-child { color: var(--muted); }
+  #cvWarn { font-size: 14px; }
   #cvWarn.warn { color: var(--warn); } #cvWarn.err { color: var(--err); }
-  #convCard.drop { outline: 2px dashed var(--accent); }
-  @media (max-width: 640px) { .conv-grid { grid-template-columns: 1fr; } .conv-preview { align-items: flex-start; } }
-  @media (max-width: 560px) { .hide-sm { display: none; } }
+  #convCard.drop { outline: 2px dashed var(--accent); outline-offset: -8px; }
+  details.sub summary { font-size: 14px; color: var(--muted); }
+
+  /* ---- iPod-style controller for playback on the board ---- */
+  .ipod { width: 292px; max-width: 100%; margin: 0 auto; padding: 22px 22px 26px; border-radius: 32px; display: flex; flex-direction: column; gap: 22px; align-items: center;
+          background: linear-gradient(180deg, #fbfbfd, #e6e6eb); box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 14px 40px rgba(0,0,0,.14); }
+  .ipod-screen { width: 100%; min-height: 132px; border-radius: 12px; background: #0b0b0d; color: #f5f5f7; padding: 16px 18px; display: flex; flex-direction: column; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 2px #2c2c2e; }
+  .np-title { font-size: 15px; font-weight: 600; letter-spacing: -.02em; word-break: break-all; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .np-meta, .np-state { font-size: 12px; color: #86868b; font-variant-numeric: tabular-nums; }
+  .wheel { position: relative; width: 214px; height: 214px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e4e4e9, #cdcdd3); box-shadow: inset 0 2px 6px rgba(255,255,255,.7), 0 6px 18px rgba(0,0,0,.12); }
+  .wheel-btn { position: absolute; background: transparent; color: #6e6e73; font-size: 12px; font-weight: 700; letter-spacing: .08em; padding: 10px 14px; border-radius: 12px; transition: color .15s, background .15s; }
+  .wheel-btn:hover { background: rgba(0,0,0,.05); color: var(--fg); }
+  .wheel-btn.on { color: var(--accent); }
+  .wheel-btn.top, .wheel-btn.top:active { top: 8px; left: 50%; transform: translateX(-50%); }
+  .wheel-btn.bottom, .wheel-btn.bottom:active { bottom: 8px; left: 50%; transform: translateX(-50%); }
+  .wheel-btn.left, .wheel-btn.left:active { left: 8px; top: 50%; transform: translateY(-50%); font-size: 18px; }
+  .wheel-btn.right, .wheel-btn.right:active { right: 8px; top: 50%; transform: translateY(-50%); font-size: 18px; }
+  .wheel-center, .wheel-center:hover { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 84px; height: 84px; border-radius: 50%; padding: 0; background: #f5f5f7; color: var(--accent); font-size: 26px; box-shadow: inset 0 -2px 6px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.15); }
+  .wheel-center:hover { background: #ffffff; }
+  .wheel-center:active { transform: translate(-50%, -50%) scale(.97); }
+  .wheel button:disabled { opacity: .35; }
+  @media (prefers-color-scheme: dark) {
+    .ipod { background: linear-gradient(180deg, #2c2c2e, #1a1a1c); box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+    .wheel { background: radial-gradient(circle at 50% 40%, #3b3b3e, #28282b); box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+    .wheel-btn { color: #a1a1a6; } .wheel-btn:hover { background: rgba(255,255,255,.06); }
+    .wheel-center, .wheel-center:hover { background: #48484b; color: #ffffff; } .wheel-center:hover { background: #5a5a5e; }
+  }
+
+  /* ---- MJPEG player ---- */
+  dialog.player { width: min(760px, calc(100vw - 32px)); background: #0b0b0d; color: #f5f5f7; }
+  .player-wrap { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px 20px; }
+  .player-head { display: flex; align-items: center; gap: 12px; }
+  .player-head h2 { flex: 1; font-size: 17px; letter-spacing: -0.02em; word-break: break-all; }
+  .player .muted { color: #86868b; }
+  .player-stage { display: flex; justify-content: center; align-items: center; background: #5a5a5e; border-radius: 12px; min-height: 260px; padding: 26px 16px 18px; overflow: hidden; }
+  /* A bezel around the picture, with a TOP tab, so the orientation of the clip is unmistakable.
+     It wraps the canvas, so it turns with the picture when Rotate is used. */
+  .frame { position: relative; display: inline-block; padding: 8px; background: #1d1d1f; border: 3px solid #e5e5ea; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .frame-tab { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: #e5e5ea; color: #1d1d1f; font-size: 10px; font-weight: 700; letter-spacing: .12em; padding: 2px 9px; border-radius: 7px; }
+  .frame canvas { display: block; max-width: calc(100vw - 110px); max-height: 58vh; background: #000; }
+  .player-stage:fullscreen { border-radius: 0; }
+  .player-stage:fullscreen .frame canvas { max-height: calc(100vh - 80px); max-width: calc(100vw - 80px); }
+  .player-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .player-bar input[type=range] { flex: 1 1 160px; accent-color: var(--accent); }
+  .player-bar select { width: auto; padding: 4px 8px; font-size: 13px; background: #1d1d1f; color: #f5f5f7; border-color: #424245; }
+  .player-bar label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .player button.secondary { background: #333336; color: #f5f5f7; }
+  .player button.secondary:hover { background: #48484b; }
+  .tabular { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  details.sub summary::after { margin-left: 6px; }
+
+  @media (max-width: 734px) {
+    h1 { font-size: 32px; } h2 { font-size: 24px; }
+    .hero { padding: 40px 16px 24px; } .hero p.sub { font-size: 17px; }
+    .card { padding: 20px; border-radius: 16px; } .wrap { padding: 0 16px 40px; } .nav .in { padding: 0 16px; }
+    .hide-sm { display: none; }
+    .conv-grid { grid-template-columns: 1fr; } .conv-preview { align-items: flex-start; }
+    .actions button { opacity: 1; }
+  }
 </style>
 </head>
 <body>
+<header class="nav">
+  <div class="in">
+    <span class="brand">ESP32‑C6 SD Browser</span>
+    <span id="status" class="pill">disconnected</span>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Your SD card. Right in the browser.</h1>
+  <p class="sub">Browse, upload, move and preview files on the Proximity Pin over Bluetooth or USB‑C. No app, no drivers.</p>
+  <div class="row">
+    <button id="btnBle">Connect with Bluetooth</button>
+    <button id="btnUsb">Connect with USB‑C</button>
+    <button id="btnDisc" class="secondary" disabled>Disconnect</button>
+  </div>
+  <div id="caps" class="tiny muted"></div>
+  <p class="small muted" style="margin:14px auto 0;max-width:640px">
+    Bluetooth: pick <b>C6‑SD</b> in the chooser. Nothing to pair or install; slower for big files.
+    USB‑C: plug the board's USB‑C port into the computer and pick the Espressif serial port. Fast and wired.
+  </p>
+</section>
+
 <div class="wrap">
-  <header>
-    <h1>ESP32-C6 SD Browser</h1>
-    <div><span id="status" class="pill">disconnected</span></div>
-  </header>
-
-  <section class="card">
-    <div class="row">
-      <button id="btnBle">Scan Bluetooth</button>
-      <button id="btnUsb">Connect USB</button>
-      <button id="btnDisc" class="secondary" disabled>Disconnect</button>
-    </div>
-    <div id="caps" class="small muted" style="margin-top:8px"></div>
-    <p class="small muted" style="margin:8px 0 0">
-      <b>Bluetooth</b>: pick <span class="name">C6-SD</span> in the chooser. No pairing or setup needed; slow for big files.<br>
-      <b>USB</b>: plug the board's USB-C port into the laptop and pick the Espressif serial port. Fast, wired, no radio.
-    </p>
-  </section>
-
   <section id="browser" class="card" hidden>
-    <div class="row" style="justify-content:space-between">
+    <div class="card-head">
       <div class="crumbs" id="crumbs"></div>
       <div class="row">
-        <span id="devinfo" class="small muted"></span>
+        <span id="devinfo" class="tiny muted"></span>
+        <button id="btnStopDev" class="secondary danger" hidden>Stop on C6</button>
         <button id="btnUpload" class="secondary">Upload files</button>
         <button id="btnMkdir" class="secondary">New folder</button>
         <button id="btnRefresh" class="secondary">Refresh</button>
         <input id="fileInput" type="file" multiple hidden>
       </div>
     </div>
-    <div id="progressWrap" style="margin-top:10px" hidden>
-      <div class="small muted" id="progressText"></div>
+    <div id="progressWrap" hidden>
+      <div class="small muted" id="progressText" style="margin-bottom:6px"></div>
       <progress id="progress" max="100" value="0"></progress>
     </div>
     <div id="selbar" hidden>
@@ -137,39 +270,63 @@
       <button id="selDelete" class="secondary danger">Delete</button>
       <button id="selClear" class="secondary">Clear</button>
     </div>
-    <div style="overflow-x:auto; margin-top:10px">
+    <div style="overflow-x:auto">
       <table>
         <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th>Name</th><th class="num">Size</th><th class="hide-sm">Modified</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
-    <p class="small muted" style="margin:8px 0 0">
+    <p class="small muted drophint">
       Drop files from your computer onto this panel to upload them here. Drag entries onto a folder or a breadcrumb to move them.
-      Ctrl+click or use the checkboxes to select several entries at once.
+      Ctrl‑click or use the checkboxes to select several entries at once.
     </p>
-    <div id="preview" style="margin-top:10px" hidden></div>
+    <div id="preview" hidden></div>
+  </section>
+
+  <section class="card" id="nowCard" hidden>
+    <div class="card-head">
+      <h2>Now playing on the C6.</h2>
+      <div class="row">
+        <span class="small muted">Plays on the board's own screen. Files come from the card.</span>
+        <button id="npTest" class="secondary" style="padding:6px 12px;font-size:12px" title="Show labelled colour bars on the LCD to check colours and orientation">Screen test</button>
+      </div>
+    </div>
+    <div class="ipod">
+      <div class="ipod-screen">
+        <div id="npTitle" class="np-title">Nothing playing</div>
+        <div id="npMeta" class="np-meta"></div>
+        <div id="npState" class="np-state"></div>
+      </div>
+      <div class="wheel">
+        <button type="button" id="npLoop" class="wheel-btn top" title="Repeat: all, one, off">REPEAT</button>
+        <button type="button" id="npPrev" class="wheel-btn left" title="Previous clip (restarts after 2 s)">⏮</button>
+        <button type="button" id="npNext" class="wheel-btn right" title="Next clip">⏭</button>
+        <button type="button" id="npStop" class="wheel-btn bottom" title="Stop and blank the screen">STOP</button>
+        <button type="button" id="npPlay" class="wheel-center" title="Play / pause">▶</button>
+      </div>
+    </div>
   </section>
 
   <section class="card" id="convCard">
     <details id="convDetails">
-      <summary>Video → MJPEG converter <span class="small muted">for the Waveshare ESP32-C6-LCD-1.47 video player</span></summary>
-      <p class="small muted" style="margin:8px 0 10px">
-        Converts any video the browser can read (MP4, MOV, WebM, MKV…) into a raw Motion-JPEG stream the player sketch expects:
-        172 × 320 portrait, baseline JPEG frames, no audio. Conversion runs in this browser tab with ffmpeg.wasm (a one-time
-        32 MB download); nothing is sent to a server. Finished files can be uploaded straight into <span class="name">/mjpeg</span> on the card.
+      <summary><h2>Video Converter.</h2><span class="small muted">For the Proximity Pin.</span></summary>
+      <p class="lead small">
+        Converts any video the browser can read (MP4, MOV, WebM, MKV…) into the raw Motion‑JPEG stream the player expects:
+        172 × 320 portrait, baseline JPEG frames, no audio. Everything runs in this tab with ffmpeg.wasm, a one‑time 32 MB download;
+        nothing is sent to a server. Finished files can go straight into <b>/mjpeg</b> on the card.
       </p>
       <div class="row">
         <button id="cvPick" class="secondary">Choose video</button>
-        <input id="cvFile" type="file" accept="video/*,.mkv,.mov,.mp4,.webm,.avi,.m4v" hidden>
+        <input id="cvFile" type="file" accept=".mp4,.m4v,.mov,.mkv,.webm,.avi,.wmv,.flv,.mpg,.mpeg,.mpe,.m2v,.ts,.m2ts,.mts,.3gp,.3g2,.ogv,.ogg,.gif" hidden>
         <span id="cvInfo" class="small muted">No video chosen. You can also drop one here.</span>
       </div>
-      <div class="conv-grid" style="margin-top:12px">
+      <div class="conv-grid" style="margin-top:20px">
         <div class="conv-opts">
           <label class="field">Output size
             <select id="cvSize"><option value="172x320">172 × 320 portrait (player default, rotation 0)</option><option value="320x172">320 × 172 landscape (players using rotation 1)</option></select>
           </label>
           <label class="field">Rotate source
-            <select id="cvRotate"><option value="none">No rotation</option><option value="cw">90° clockwise (landscape video, board held sideways)</option><option value="ccw">90° counter-clockwise</option><option value="180">180°</option></select>
+            <select id="cvRotate"><option value="none">No rotation</option><option value="cw">90° clockwise (landscape video, board held sideways)</option><option value="ccw">90° counter‑clockwise</option><option value="180">180°</option></select>
           </label>
           <label class="field">Fit
             <select id="cvFit"><option value="crop">Crop to fill (keeps proportions, trims edges)</option><option value="pad">Letterbox (keeps everything, black bars)</option><option value="stretch">Stretch to fill</option></select>
@@ -177,8 +334,8 @@
           <label class="field">Frame rate
             <select id="cvFps"><option>10</option><option>12</option><option>15</option><option>20</option><option selected>24</option><option>30</option></select>
           </label>
-          <label class="field">JPEG quality <span class="muted">(-q:v, lower is better and bigger)</span>
-            <span class="row"><input id="cvQ" type="range" min="2" max="15" value="7" style="flex:1"><b id="cvQVal" style="width:2em;text-align:right">7</b></span>
+          <label class="field">JPEG quality <span class="muted">(‑q:v, lower is better and bigger)</span>
+            <span class="row"><input id="cvQ" type="range" min="2" max="15" value="7" style="flex:1"><b id="cvQVal" style="width:2em;text-align:right;color:var(--fg)">7</b></span>
           </label>
           <div class="row">
             <label class="field" style="flex:1">Start at (s)<input id="cvStart" type="number" min="0" step="0.1" placeholder="0"></label>
@@ -189,46 +346,51 @@
         <div class="conv-preview">
           <div class="small muted">Preview of the output frame</div>
           <canvas id="cvCanvas" width="172" height="320"></canvas>
-          <div id="cvPreviewNote" class="small muted"></div>
+          <div id="cvPreviewNote" class="tiny muted"></div>
           <video id="cvVideo" class="offscreen" muted playsinline preload="auto"></video>
         </div>
       </div>
-      <div class="small muted" style="margin-top:10px">Same conversion with a local ffmpeg:</div>
-      <div class="row" style="align-items:flex-start">
-        <pre id="cvCmd" class="cmd"></pre>
-        <button id="cvCopy" class="secondary" style="padding:5px 10px;font-size:12px">Copy</button>
+      <div id="cvCmdWrap">
+        <div class="small muted" style="margin-top:18px">Same conversion with a local ffmpeg</div>
+        <div class="row" style="align-items:flex-start;margin-top:6px">
+          <pre id="cvCmd" class="cmd"></pre>
+          <button id="cvCopy" class="secondary" style="padding:7px 14px;font-size:13px">Copy</button>
+        </div>
       </div>
-      <div class="row" style="margin-top:12px">
+      <div class="row" style="margin-top:18px">
         <button id="cvConvert" disabled>Convert in browser</button>
         <button id="cvCancel" class="secondary" hidden>Cancel</button>
         <span id="cvStatus" class="small muted"></span>
       </div>
-      <progress id="cvProgress" max="100" value="0" style="margin-top:6px" hidden></progress>
-      <div id="cvResult" style="margin-top:12px" hidden>
+      <progress id="cvProgress" max="100" value="0" style="margin-top:10px" hidden></progress>
+      <div id="cvResult" style="margin-top:20px" hidden>
         <div class="conv-grid">
           <div>
             <table class="stats"><tbody id="cvStats"></tbody></table>
-            <div id="cvWarn" class="small" style="margin-top:6px"></div>
-            <div class="row" style="margin-top:10px">
+            <div id="cvWarn" style="margin-top:8px"></div>
+            <div class="row" style="margin-top:14px">
+              <button id="cvPlay" class="secondary">Play here</button>
               <button id="cvDownload" class="secondary">Download .mjpeg</button>
               <button id="cvUpload">Upload to /mjpeg on the card</button>
+              <button id="cvPlayDev" class="secondary">Play on C6</button>
             </div>
           </div>
           <div class="conv-preview"><div class="small muted">First frame of the result</div><img id="cvFirst" alt="first frame"></div>
         </div>
       </div>
-      <details id="cvLogDetails" style="margin-top:10px"><summary class="small muted">ffmpeg output</summary><pre id="cvLog" class="small"></pre></details>
+      <details id="cvLogDetails" class="sub" style="margin-top:14px"><summary>ffmpeg output</summary><pre id="cvLog"></pre></details>
     </details>
   </section>
 
   <section class="card">
-    <div class="row" style="justify-content:space-between">
+    <div class="card-head" style="margin-bottom:10px">
       <span class="small muted">Log</span>
-      <button id="btnClearLog" class="secondary" style="padding:4px 9px;font-size:12px">Clear</button>
+      <button id="btnClearLog" class="secondary" style="padding:6px 12px;font-size:12px">Clear</button>
     </div>
     <pre id="log"></pre>
   </section>
 </div>
+<footer class="foot">Works in Chrome and Edge on the desktop and in Chrome on Android. Made for the Waveshare ESP32‑C6‑LCD‑1.47.</footer>
 
 <!-- Name prompt: rename / new folder -->
 <dialog id="nameDlg">
@@ -243,13 +405,36 @@
   </form>
 </dialog>
 
+<!-- MJPEG player: files on the card stream in while playing; converter results play from memory -->
+<dialog id="playerDlg" class="player">
+  <div class="player-wrap">
+    <div class="player-head">
+      <h2 id="plTitle"></h2>
+      <span id="plStatus" class="small muted tabular"></span>
+      <button type="button" class="secondary" id="plClose">Close</button>
+    </div>
+    <div class="player-stage" id="plStage">
+      <div class="frame"><span class="frame-tab">TOP</span><canvas id="plCanvas" width="172" height="320"></canvas></div>
+    </div>
+    <div class="player-bar">
+      <button type="button" id="plPlay">Play</button>
+      <input id="plSeek" type="range" min="0" max="0" value="0" step="1" aria-label="position">
+      <span id="plTime" class="small muted tabular">0:00 / 0:00</span>
+      <label class="muted">fps <select id="plFps"><option>10</option><option>12</option><option>15</option><option>20</option><option selected>24</option><option>30</option></select></label>
+      <label class="muted"><input id="plLoop" type="checkbox" checked> Loop</label>
+      <button type="button" class="secondary" id="plRotate" title="Rotate the picture 90°">Rotate</button>
+      <button type="button" class="secondary" id="plFull">Fullscreen</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- Folder picker: move / copy destination -->
 <dialog id="pickDlg">
   <form method="dialog">
     <h2 id="pickTitle"></h2>
     <div class="row" style="justify-content:space-between">
       <div class="crumbs" id="pickCrumbs"></div>
-      <button type="button" class="secondary" id="pickMkdir" style="padding:5px 10px;font-size:12px">New folder</button>
+      <button type="button" class="secondary" id="pickMkdir" style="padding:7px 14px;font-size:13px">New folder</button>
     </div>
     <div class="picklist" id="pickList"></div>
     <label class="field" id="pickNameWrap">Name at destination
@@ -295,7 +480,12 @@ class RequestTransport {
   _newPending(cmd, resolve, reject, onProgress, timeoutMs) {
     const p = { cmd, chunks: [], bytes: 0, need: null, resolve, reject, onProgress, timer: null };
     const ms = timeoutMs || this.idleTimeoutMs;
-    p.touch = () => { clearTimeout(p.timer); p.timer = setTimeout(() => { this.pending = null; reject(new Error(`timeout waiting for "${cmd.slice(0, 24)}"`)); }, ms); };
+    p.touch = () => { clearTimeout(p.timer); p.timer = setTimeout(() => {
+      this.pending = null;
+      if (!p.bytes && this.kind === 'BLE' && enc.encode(cmd).length > 20 && !this.pieces)
+        log('No reply at all to a command longer than 20 bytes. On this link that needs a "long write", which this Bluetooth stack may not deliver; firmware 0.4.1+ avoids it (commands are sent in pieces). Short file names work meanwhile.');
+      reject(new Error(`timeout waiting for "${cmd.slice(0, 24)}"`));
+    }, ms); };
     return p;
   }
   _finish(p, err) {
@@ -329,15 +519,22 @@ class RequestTransport {
   mkdir(path)       { return this.json('K ' + path); }
   remove(path)      { return this.json('D ' + path, LONG_OP_MS); }
   move(src, dst)    { return this.json(`M ${src}\t${dst}`, LONG_OP_MS); }
+  play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play a clip on the board's LCD ("*" = whole /mjpeg folder)
+  stop()            { return this.json('S'); }
+  control(action)   { return this.json('X ' + action); }         // pause | resume | toggle | next | prev | restart | loop all|one|off
+  screenTest()      { return this.json('T'); }                   // colour bars + orientation line on the LCD
   copy(src, dst)    { return this.json(`C ${src}\t${dst}`, LONG_OP_MS); }
 
-  async readFile(path, size, onProgress) {
+  // Read a whole file in windows. With onChunk the data is streamed to the caller instead of
+  // collected; aborted() is checked between windows so a viewer can stop a long download.
+  async readFile(path, size, onProgress, onChunk, aborted) {
     const parts = []; let off = 0;
-    while (off < size) {
+    while (off < size && !aborted?.()) {
       const n = Math.min(this.windowBytes, size - off);
       const u8 = await this.request(`R ${path} ${off} ${n}`, b => onProgress?.(off + b));
       if (!u8.length) break;
-      parts.push(u8); off += u8.length;
+      if (onChunk) onChunk(u8); else parts.push(u8);
+      off += u8.length;
     }
     return new Blob(parts);
   }
@@ -363,7 +560,12 @@ class RequestTransport {
 // Transport 1: Web Bluetooth (GATT notify frames: [type][payload])
 // ============================================================================
 class BleTransport extends RequestTransport {
-  constructor() { super(); this.kind = 'BLE'; this.idleTimeoutMs = 8000; this.windowBytes = 32 * 1024; this.uploadChunk = 4096; }
+  constructor() { super(); this.kind = 'BLE'; this.idleTimeoutMs = 8000; this.windowBytes = 96 * 1024; this.uploadChunk = 4096; this.mtu = 23; this.fastWrite = false; }
+  // Called with the device's "ble" info: with a large MTU a 512-byte piece fits one packet, so
+  // write-without-response saves a round trip per piece (the per-chunk upload ack still paces us).
+  setLinkInfo(ble) { this.mtu = ble?.mtu || 23; this.pieces = !!ble?.pieces; this.fastWrite = this.mtu >= 515 && !!this.up?.properties?.writeWithoutResponse; }
+  // Average notification payload seen so far: the truest indication of the negotiated MTU.
+  packetAvg() { return this.nPkts ? Math.round(this.nPktBytes / this.nPkts) : 0; }
 
   async connect(onDisconnect) {
     if (!navigator.bluetooth) throw new Error('Web Bluetooth is not available in this browser (use Chrome/Edge on desktop or Android).');
@@ -379,17 +581,35 @@ class BleTransport extends RequestTransport {
     this.label = this.device.name || 'BLE device';
   }
   async disconnect() { try { this.device?.gatt?.disconnect(); } catch {} }
-  _send(cmd) { return this.cmd.writeValueWithResponse(enc.encode(cmd)); }
+  // A command longer than one ATT packet would need the central's "long write" procedure, which not
+  // every Bluetooth stack gets right. Firmware 0.4.1+ accepts commands in pieces instead: every piece
+  // but the last ends with a 0x01 continuation byte.
+  async _send(cmd) {
+    const bytes = enc.encode(cmd), limit = Math.max(20, Math.min(512, this.mtu - 3));
+    if (!this.pieces || bytes.length <= limit) return this.cmd.writeValueWithResponse(bytes);
+    const per = limit - 1;
+    for (let o = 0; o < bytes.length; o += per) {
+      const part = bytes.subarray(o, o + per), last = o + per >= bytes.length;
+      await this.cmd.writeValueWithResponse(last ? part : concat([part, new Uint8Array([1])]));
+    }
+  }
   async _sendRaw(u8) {
     // 512 bytes = ATT value limit; with-response works at any MTU (long writes) and paces us.
-    for (let o = 0; o < u8.length; o += 512) await this.up.writeValueWithResponse(u8.subarray(o, o + 512));
+    for (let o = 0; o < u8.length; o += 512) {
+      const part = u8.subarray(o, o + 512);
+      if (this.fastWrite) {
+        try { await this.up.writeValueWithoutResponse(part); continue; }
+        catch (e) { this.fastWrite = false; log('BLE: write without response refused, using acknowledged writes: ' + e.message); }
+      }
+      await this.up.writeValueWithResponse(part);
+    }
   }
   _onFrame(dv) {
     const u8 = new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
     const p = this.pending;
     if (!p || !u8.length) return;
     const type = u8[0], payload = u8.slice(1);
-    if (type === FR_DATA)     { p.chunks.push(payload); p.bytes += payload.length; p.onProgress?.(p.bytes); p.touch(); }
+    if (type === FR_DATA)     { this.nPkts = (this.nPkts || 0) + 1; this.nPktBytes = (this.nPktBytes || 0) + payload.length; p.chunks.push(payload); p.bytes += payload.length; p.onProgress?.(p.bytes); p.touch(); }
     else if (type === FR_END) { this._finish(p); }
     else if (type === FR_ERR) { this._finish(p, new Error(dec.decode(payload))); }
   }
@@ -468,6 +688,11 @@ class UsbTransport extends RequestTransport {
 // UI
 // ============================================================================
 const DRAG_TYPE = 'application/x-c6sd-names';     // internal row drags (vs. files from the desktop)
+// Feature switches. Both features are complete; either can be shown or hidden here.
+//   browserPlayback: the in-page MJPEG player and file preview.
+//   devicePlayback:  playing on the board's own LCD ("Play on C6", the Now-playing card, Stop on C6).
+//   ffmpegCommand:   the "Same conversion with a local ffmpeg" block under the converter options.
+const FEATURES = { browserPlayback: true, devicePlayback: false, ffmpegCommand: false };
 let tp = null, cwd = '/', busy = false, entries = [];
 const selected = new Set();                         // names selected in cwd
 let anchor = null;                                  // last toggled name, for shift-click ranges
@@ -504,13 +729,76 @@ async function refreshInfo() {
   try {
     const i = await tp.info();
     const sd = i.sd?.ok ? `SD ${fmtSize(i.sd.used)} / ${fmtSize(i.sd.total)}` : 'SD not mounted';
-    $('devinfo').textContent = `${i.name} fw ${i.fw} · ${sd}`;
+    let link = '';
+    if (tp.kind === 'BLE' && i.ble) {
+      tp.setLinkInfo?.(i.ble);
+      link = ` · MTU ${i.ble.mtu}${i.ble.phy === 2 ? ' · 2M PHY' : ''}`;
+      if (i.ble.mtu <= 23) {
+        // The firmware asks for a bigger MTU right after connecting; give it a moment, then warn once.
+        if (!tp.mtuRetried) { tp.mtuRetried = true; setTimeout(() => { if (tp && tp.kind === 'BLE') refreshInfo(); }, 1500); }
+        else if (!tp.mtuWarned) { tp.mtuWarned = true; log('BLE MTU is 23, the minimum: transfers will crawl at about 2 KB/s. The current firmware requests a 517-byte MTU itself; if this persists, reconnect or use USB-C.'); }
+      }
+    } else if (tp.kind === 'BLE' && !i.ble) {
+      link = ' · older firmware';
+      if (!tp.mtuWarned) { tp.mtuWarned = true; log('This firmware does not report its BLE link settings; flash the current firmware for faster Bluetooth transfers.'); }
+    }
+    const dp = i.player, playing = !!dp?.playing;
+    $('devinfo').textContent = `${i.name} fw ${i.fw} · ${sd}${link}${playing ? ` · ▶ ${baseName(dp.file)} ${dp.fps} fps` : ''}`;
+    if (dp && FEATURES.devicePlayback) renderNow(dp); else { $('nowCard').hidden = true; $('btnStopDev').hidden = true; }
   } catch (e) { log('info failed: ' + e.message); }
 }
+// ---------------- playback on the board: iPod-style controls ----------------
+let nowState = null, nowPoll = null;
+function renderNow(dp) {
+  nowState = dp || null;
+  const card = $('nowCard');
+  if (!tp) { card.hidden = true; clearInterval(nowPoll); nowPoll = null; return; }
+  card.hidden = false;
+  const on = !!dp?.playing;
+  $('npTitle').textContent = on ? baseName(dp.file) : 'Nothing playing';
+  $('npMeta').textContent = on ? `${dp.index + 1} of ${dp.count} · ${dp.fps} fps` : 'Pick a clip in the file list, or press ▶ to play the whole /mjpeg folder.';
+  $('npState').textContent = on ? `${dp.paused ? 'Paused' : 'Playing'} · ${fmtClock(dp.frames / (dp.fps || 24))} · repeat ${dp.loop}` : '';
+  $('npPlay').textContent = on && !dp.paused ? '❚❚' : '▶';
+  $('npLoop').textContent = dp?.loop === 'one' ? 'REPEAT 1' : dp?.loop === 'off' ? 'REPEAT OFF' : 'REPEAT';
+  $('npLoop').classList.toggle('on', !!dp && dp.loop !== 'off');
+  $('btnStopDev').hidden = !on;
+  for (const id of ['npPrev', 'npNext', 'npStop']) $(id).disabled = !on || busy;
+  $('npPlay').disabled = busy; $('npLoop').disabled = busy;
+  clearInterval(nowPoll); nowPoll = null;
+  if (on && !dp.paused) nowPoll = setInterval(() => { if (tp && !busy && !document.querySelector('dialog[open]')) refreshInfo(); }, 3000);
+}
+async function devCtl(action) {
+  if (busy || !tp) return;
+  setBusy(true);
+  try { const st = await tp.control(action); log(`C6 ${action}: ok`); nowState = st; }
+  catch (e) { log(`C6 ${action} failed: ${e.message}`); alert(`${action} failed:\n${e.message}`); }
+  finally { setBusy(false); renderNow(nowState); }
+}
+$('npPlay').onclick = () => nowState?.playing ? devCtl('toggle') : devPlay('*');
+$('npPrev').onclick = () => devCtl('prev');
+$('npNext').onclick = () => devCtl('next');
+$('npStop').onclick = () => devStop();
+$('npLoop').onclick = () => devCtl('loop ' + (nowState?.loop === 'all' ? 'one' : nowState?.loop === 'one' ? 'off' : 'all'));
+$('npTest').onclick = async () => {
+  if (busy || !tp) return;
+  setBusy(true);
+  try { nowState = await tp.screenTest(); log('C6 screen test: read the bar labels on the LCD. A label on the wrong colour means red/blue order; "TOP ^ ABC" upside down or backwards means rotation or mirror; a grey/washed picture means inversion.'); }
+  catch (e) { log('screen test failed: ' + e.message); alert('Screen test failed:\n' + e.message); }
+  finally { setBusy(false); renderNow(nowState); }
+};
+// Playback on the board's own LCD (firmware 0.5.0+). fps is asked for when not known.
+async function devPlay(path, fps) {
+  if (busy || !tp) return;
+  if (!fps) { const v = await askName('Frame rate for playback on the C6 (fps)', '24', 'Play'); if (v == null) return; fps = parseInt(v, 10); if (!(fps > 0)) return alert('Enter a number of frames per second.'); }
+  runBatch([{ label: `play on C6 ${baseName(path)} at ${fps} fps`, run: () => tp.play(path, fps) }]);
+}
+function devStop() { if (busy || !tp) return; runBatch([{ label: 'stop playback on C6', run: () => tp.stop() }]); }
+$('btnStopDev').onclick = devStop;
 async function detach() {
   const t = tp; tp = null;
   for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
   setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true;
+  $('nowCard').hidden = true; clearInterval(nowPoll); nowPoll = null; nowState = null;
   selected.clear(); entries = []; updateSelection();
   if (t) await t.disconnect();
 }
@@ -534,7 +822,7 @@ function renderCrumbs() {
   const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => navigate(p); if (p !== cwd) makeDropTarget(a, p); return a; };
   c.appendChild(mk('/', '/'));
   let acc = '';
-  parts.forEach(seg => { acc += '/' + seg; c.appendChild(document.createTextNode(' › ')); c.appendChild(mk(seg, acc)); });
+  parts.forEach(seg => { acc += '/' + seg; c.appendChild(Object.assign(document.createElement('span'), { className: 'sep', textContent: '›' })); c.appendChild(mk(seg, acc)); });
 }
 
 const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -546,7 +834,7 @@ function renderRows(list) {
   const tb = $('rows'); tb.innerHTML = '';
   if (cwd !== '/') {
     const tr = document.createElement('tr'); tr.className = 'entry';
-    tr.innerHTML = `<td class="chk"></td><td class="name"><span class="ic">↩</span>..</td><td></td><td class="hide-sm"></td><td></td>`;
+    tr.innerHTML = `<td class="chk"></td><td class="name"><span class="ic up"></span>..</td><td></td><td class="hide-sm"></td><td></td>`;
     tr.onclick = () => navigate(parentOf(cwd));
     makeDropTarget(tr, parentOf(cwd));
     tb.appendChild(tr);
@@ -554,24 +842,30 @@ function renderRows(list) {
   if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = '<td colspan=5 class="muted">(empty)</td>'; tb.appendChild(tr); }
   for (const e of list) {
     const tr = document.createElement('tr'); tr.className = 'entry'; tr.dataset.name = e.n;
-    const full = joinPath(cwd, e.n), canPreview = !e.d && isPreviewable(e.n) && e.s <= PREVIEW_MAX;
+    const full = joinPath(cwd, e.n), canPreview = !e.d && isPreviewable(e.n) && e.s <= PREVIEW_MAX, canPlay = !e.d && isMjpeg(e.n);
     tr.innerHTML = `<td class="chk"><input type="checkbox" aria-label="select"></td>
-                    <td class="name"><span class="ic">${e.d ? '📁' : '📄'}</span>${escapeHtml(e.n)}</td>
+                    <td class="name"><span class="ic ${e.d ? 'folder' : 'file'}"></span>${escapeHtml(e.n)}</td>
                     <td class="num">${e.d ? '' : fmtSize(e.s)}</td>
                     <td class="hide-sm small muted">${fmtTime(e.t)}</td>
                     <td class="actions"></td>`;
     tr.querySelector('input').onclick = ev => { ev.stopPropagation(); toggleSelect(e.n, ev.shiftKey); };
     const act = tr.querySelector('.actions');
     const btn = (label, fn, cls = 'secondary') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; act.appendChild(b); };
+    if (canPlay && FEATURES.devicePlayback) btn('Play on C6', () => devPlay(full), '');
+    if (canPlay && FEATURES.browserPlayback) btn(FEATURES.devicePlayback ? 'Play here' : 'Play', () => playFromCard(full, e.s), FEATURES.devicePlayback ? 'secondary' : '');
     if (!e.d) btn('Download', () => download(full, e.s));
-    if (canPreview) btn('Preview', () => preview(full, e.n, e.s));
+    if (canPreview && FEATURES.browserPlayback) btn('Preview', () => preview(full, e.n, e.s));
     btn('Rename', () => renameEntry(e));
     btn('Copy to…', () => moveCopy('copy', [e]));
     btn('Move to…', () => moveCopy('move', [e]));
     btn('Delete', () => deleteEntries([e]), 'secondary danger');
     tr.onclick = ev => {
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { toggleSelect(e.n, ev.shiftKey); return; }
-      e.d ? navigate(full) : (canPreview ? preview(full, e.n, e.s) : download(full, e.s));
+      if (e.d) navigate(full);
+      else if (canPlay && FEATURES.browserPlayback) playFromCard(full, e.s);
+      else if (canPlay && FEATURES.devicePlayback) devPlay(full);
+      else if (canPreview && FEATURES.browserPlayback) preview(full, e.n, e.s);
+      else download(full, e.s);
     };
     // Drag rows onto folders / breadcrumbs to move them. Dragging a selected row drags the whole selection.
     tr.draggable = true;
@@ -715,21 +1009,21 @@ function pickFolder({ mode, items, title, okLabel }) {
     const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => load(p); return a; };
     c.appendChild(mk('/', '/'));
     let acc = '';
-    for (const seg of dir.split('/').filter(Boolean)) { acc += '/' + seg; c.appendChild(document.createTextNode(' › ')); c.appendChild(mk(seg, acc)); }
+    for (const seg of dir.split('/').filter(Boolean)) { acc += '/' + seg; c.appendChild(Object.assign(document.createElement('span'), { className: 'sep', textContent: '›' })); c.appendChild(mk(seg, acc)); }
     list.innerHTML = '';
     const item = (icon, label, onClick, tag, disabled) => {
       const el = document.createElement('div'); el.className = 'item' + (disabled ? ' disabled' : '');
-      el.innerHTML = '<span class="ic"></span><span></span>'; el.children[0].textContent = icon; el.children[1].textContent = label;
+      el.innerHTML = '<span class="ic"></span><span></span>'; el.children[0].className = 'ic ' + icon; el.children[1].textContent = label;
       if (tag) { const s = document.createElement('span'); s.className = 'tag'; s.textContent = tag; el.appendChild(s); }
       if (!disabled) el.onclick = onClick;
       list.appendChild(el);
     };
-    if (dir !== '/') item('↩', '..', () => load(parentOf(dir)));
+    if (dir !== '/') item('up', '..', () => load(parentOf(dir)));
     const folders = listing.filter(e => e.d).sort((a, b) => a.n.localeCompare(b.n, undefined, { numeric: true }));
     const files = listing.length - folders.length;
     for (const f of folders) {
       const p = joinPath(dir, f.n), isSrc = srcDirs.includes(p);
-      item('📁', f.n, () => load(p), isSrc ? `being ${mode}d` : '', isSrc);
+      item('folder', f.n, () => load(p), isSrc ? `being ${mode}d` : '', isSrc);
     }
     if (!folders.length) {
       const el = document.createElement('div'); el.className = 'empty';
@@ -770,10 +1064,16 @@ async function fetchBlob(path, size) {
   showProgress(`${tp.kind}: ${name} 0 / ${fmtSize(size)}`, 0);
   try {
     const blob = await tp.readFile(path, size, got => {
-      const s = (performance.now() - t0) / 1000;
-      showProgress(`${tp.kind}: ${name} ${fmtSize(got)} / ${fmtSize(size)} · ${fmtSize(got / Math.max(s, .1))}/s`, size ? got / size : 0);
+      const s = (performance.now() - t0) / 1000, pk = tp.packetAvg?.();
+      showProgress(`${tp.kind}: ${name} ${fmtSize(got)} / ${fmtSize(size)} · ${fmtSize(got / Math.max(s, .1))}/s${pk ? ` · ${pk} B/packet` : ''}`, size ? got / size : 0);
     });
-    log(`read ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+    const pk = tp.packetAvg?.();
+    log(`read ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s${pk ? ` (${pk} B per BLE packet)` : ''}`);
+    if (pk && pk <= 20 && blob.size > 2048 && !tp.smallPktWarned) {
+      tp.smallPktWarned = true;
+      log('BLE packets are 20 bytes: the host never granted a larger MTU, so the link runs at its minimum (about 2.4 KB/s). '
+        + 'Make sure firmware 0.4.0 or newer is flashed (the device line shows "MTU"); on Android, forget the device in the phone\'s Bluetooth settings and reconnect.');
+    }
     return blob;
   } finally { showProgress(null); }
 }
@@ -897,6 +1197,127 @@ $('fileInput').onchange = e => { const f = [...e.target.files]; e.target.value =
 }
 
 // ============================================================================
+// MJPEG player. A .mjpeg file is just JPEG frames back to back, so the page splits the
+// stream on the JPEG start/end markers as it arrives and draws frames on a canvas at the
+// chosen rate. Files on the card stream in while playing; converter results play from memory.
+// ============================================================================
+const isMjpeg = n => /\.(mjpeg|mjpg)$/i.test(n);
+const pl = { frames: [], carry: null, idx: 0, playing: false, userPaused: false, loading: false, abort: false, timer: null, rot: 0, drawing: false, pending: null };
+const plFps = () => +$('plFps').value || 24;
+const fmtClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+function plOpen(title, fps) {
+  plPause(); pl.frames = []; pl.carry = null; pl.idx = 0; pl.abort = false; pl.rot = 0; pl.userPaused = false; pl.pending = null;
+  $('plTitle').textContent = title; $('plStatus').textContent = '';
+  if (fps) $('plFps').value = String(fps);
+  $('plSeek').max = 0; $('plSeek').value = 0;
+  const c = $('plCanvas'); c.width = 172; c.height = 320; c.getContext('2d').clearRect(0, 0, c.width, c.height);
+  plUpdateTime();
+  const d = $('playerDlg'); if (!d.open) d.showModal();
+}
+// Feed raw MJPEG bytes; complete frames are appended, a partial frame is carried to the next call.
+function plFeed(u8) {
+  const b = pl.carry ? concat([pl.carry, u8]) : u8, n = b.length;
+  let i = 0, start = -1;
+  while (i < n - 1) {
+    if (start < 0) { if (b[i] === 0xFF && b[i + 1] === 0xD8) { start = i; i += 2; } else i++; }
+    else if (b[i] === 0xFF && b[i + 1] === 0xD9) { pl.frames.push(b.slice(start, i + 2)); start = -1; i += 2; }
+    else i++;
+  }
+  pl.carry = start >= 0 ? b.slice(start) : (n && b[n - 1] === 0xFF ? b.slice(n - 1) : null);
+  $('plSeek').max = Math.max(0, pl.frames.length - 1);
+  plUpdateTime();
+  if (pl.frames.length === 1) plShow(0);                                            // poster frame
+  if (!pl.playing && !pl.userPaused && pl.frames.length >= plFps() * 2) plPlay();   // 2 s buffered: go
+}
+async function plShow(i) {
+  if (!pl.frames.length) return;
+  i = Math.max(0, Math.min(i, pl.frames.length - 1)); pl.idx = i;
+  if (pl.drawing) { pl.pending = i; return; }
+  pl.drawing = true;
+  try {
+    const bmp = await createImageBitmap(new Blob([pl.frames[i]], { type: 'image/jpeg' }));
+    const c = $('plCanvas'), ctx = c.getContext('2d'), quarter = pl.rot % 180 !== 0;
+    const W = quarter ? bmp.height : bmp.width, H = quarter ? bmp.width : bmp.height;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(pl.rot * Math.PI / 180); ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2); ctx.restore();
+    bmp.close();
+  } catch { $('plStatus').textContent = `frame ${i} cannot be decoded`; }
+  pl.drawing = false;
+  $('plSeek').value = i; plUpdateTime();
+  if (pl.pending != null) { const p = pl.pending; pl.pending = null; plShow(p); }
+}
+function plUpdateTime() {
+  const fps = plFps();
+  $('plTime').textContent = `${fmtClock(pl.idx / fps)} / ${fmtClock(pl.frames.length / fps)}${pl.loading ? ' +' : ''}`;
+}
+function plPlay() {
+  if (!pl.frames.length || pl.playing) return;
+  pl.playing = true; pl.userPaused = false; $('plPlay').textContent = 'Pause';
+  let next = performance.now();
+  const tick = () => {
+    if (!pl.playing) return;
+    const now = performance.now();
+    if (now >= next) {
+      next += 1000 / plFps();
+      if (now - next > 500) next = now;                     // resync after a stall
+      let i = pl.idx + 1;
+      if (i >= pl.frames.length) {
+        if (pl.loading) { pl.timer = setTimeout(tick, 40); return; }   // wait for more frames
+        if (!$('plLoop').checked) { plPause(); return; }
+        i = 0;
+      }
+      plShow(i);
+    }
+    pl.timer = setTimeout(tick, Math.max(0, next - performance.now()));
+  };
+  tick();
+}
+function plPause(byUser) {
+  pl.playing = false; clearTimeout(pl.timer); pl.timer = null;
+  if (byUser) pl.userPaused = true;
+  $('plPlay').textContent = 'Play';
+}
+$('plPlay').onclick = () => pl.playing ? plPause(true) : plPlay();
+$('plSeek').oninput = e => plShow(+e.target.value);
+$('plFps').onchange = plUpdateTime;
+$('plRotate').onclick = () => { pl.rot = (pl.rot + 90) % 360; plShow(pl.idx); };
+$('plFull').onclick = () => $('plStage').requestFullscreen?.();
+$('plClose').onclick = () => $('playerDlg').close();
+$('playerDlg').addEventListener('close', () => { pl.abort = true; plPause(); pl.frames = []; pl.carry = null; });
+$('playerDlg').addEventListener('keydown', e => {
+  if (e.key === ' ') { e.preventDefault(); pl.playing ? plPause(true) : plPlay(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); plPause(true); plShow(pl.idx + 1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); plPause(true); plShow(pl.idx - 1); }
+});
+// Stream a file from the card into the player; frames show as they arrive.
+async function playFromCard(path, size) {
+  if (busy || !tp) return;
+  setBusy(true);
+  const name = baseName(path), t0 = performance.now();
+  plOpen(name, 24); pl.loading = true;
+  try {
+    await tp.readFile(path, size,
+      got => { const s = (performance.now() - t0) / 1000; $('plStatus').textContent = `loading ${Math.round(100 * got / size)}% · ${fmtSize(got / Math.max(s, .1))}/s`; },
+      u8 => plFeed(u8),
+      () => pl.abort);
+    if (!pl.abort) {
+      $('plStatus').textContent = `${pl.frames.length} frames · ${fmtSize(size)}`;
+      log(`play ${name}: ${pl.frames.length} frames, ${fmtSize(size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+      if (!pl.playing && !pl.userPaused) plPlay();
+    }
+  } catch (e) { if (!pl.abort) { $('plStatus').textContent = 'load failed: ' + e.message; log(`play ${name} failed: ${e.message}`); } }
+  finally { pl.loading = false; plUpdateTime(); setBusy(false); }
+}
+// Play a converter result straight from memory.
+async function playBlob(name, blob, fps) {
+  plOpen(name, fps); pl.loading = false;
+  plFeed(new Uint8Array(await blob.arrayBuffer()));
+  $('plStatus').textContent = `${pl.frames.length} frames · ${fmtSize(blob.size)}`;
+  plPlay();
+}
+
+// ============================================================================
 // Video → MJPEG converter. ffmpeg.wasm is fetched from unpkg on first use.
 // Output matches thelastoutpostworkshop's ESP32-C6-LCD-1.47 video player:
 // raw concatenated baseline JPEGs, 172x320, read from /mjpeg on the card.
@@ -947,7 +1368,9 @@ function convCommand(o) {
 function setConvFile(file) {
   conv.file = file; conv.meta = null; conv.result = null; conv.previewKicked = false; $('cvResult').hidden = true;
   $('cvName').value = stemOf(file.name).replace(/[\\/:*?"<>|]/g, '_');
-  $('cvInfo').textContent = `${file.name} · ${fmtSize(file.size)}${file.size > 500 * 1048576 ? ' · large: browser conversion needs the whole file in memory, consider trimming or a local ffmpeg' : ''}`;
+  $('cvInfo').textContent = `${file.name} · ${fmtSize(file.size)}`
+    + (VIDEO_EXTS.includes(extOf(file.name)) ? '' : ' · not a known video type, conversion may fail')
+    + (file.size > 500 * 1048576 ? ' · large: browser conversion needs the whole file in memory, consider trimming or a local ffmpeg' : '');
   const v = $('cvVideo');
   if (v.src) URL.revokeObjectURL(v.src);
   $('cvPreviewNote').textContent = 'Loading preview…';
@@ -1002,12 +1425,23 @@ function refreshConv() {
   $('cvConvert').disabled = !conv.file || conv.running;
   $('cvCancel').hidden = !conv.running;
   for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvStart', 'cvDur', 'cvName', 'cvPick']) $(id).disabled = conv.running;
-  $('cvUpload').disabled = !tp || busy;
+  $('cvUpload').disabled = !tp || busy; $('cvPlayDev').disabled = !tp || busy;
   if (conv.meta) drawPreview();
 }
 for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvDur', 'cvName']) $(id).addEventListener('input', refreshConv);
 $('cvStart').addEventListener('input', () => { refreshConv(); seekPreview(); });
-$('cvPick').onclick = () => $('cvFile').click();
+const VIDEO_EXTS = $('cvFile').accept.split(',');
+// Chrome/Edge: native picker with a "Video files" filter and no "All files" entry, so only videos and folders show.
+// Elsewhere (or if the API refuses, e.g. on file:// pages) fall back to the <input accept> dialog.
+$('cvPick').onclick = async () => {
+  if (window.showOpenFilePicker) {
+    try {
+      const [h] = await window.showOpenFilePicker({ multiple: false, excludeAcceptAllOption: true, types: [{ description: 'Video files', accept: { 'video/mp4': VIDEO_EXTS } }] });
+      setConvFile(await h.getFile()); return;
+    } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  $('cvFile').click();
+};
 $('cvFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) setConvFile(f); };
 $('cvCopy').onclick = async () => { try { await navigator.clipboard.writeText($('cvCmd').textContent); $('cvCopy').textContent = 'Copied'; setTimeout(() => $('cvCopy').textContent = 'Copy', 1200); } catch { alert('Clipboard unavailable. Select the command text and copy it.'); } };
 { const card = $('convCard'); let depth = 0; const ext = e => !isInternalDrag(e);
@@ -1017,16 +1451,17 @@ $('cvCopy').onclick = async () => { try { await navigator.clipboard.writeText($(
   card.addEventListener('drop',      e => { e.preventDefault(); e.stopPropagation(); depth = 0; card.classList.remove('drop'); const f = [...e.dataTransfer.files][0]; if (f) { $('convDetails').open = true; setConvFile(f); } });
 }
 
-// Fetch a URL into a blob: URL so the worker and core can be loaded cross-origin.
-// `check(headerBytes, totalBytes)` throws when the download is not what we expect (e.g. an HTML error page).
-async function toBlobURL(url, type, onBytes, check) {
+// Download a URL with progress. `check(headerBytes, totalBytes)` throws when the download is not
+// what we expect (e.g. an HTML error page instead of the file).
+async function fetchBytes(url, onBytes, check) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`HTTP ${r.status} fetching ${url}`);
   const parts = []; let got = 0; const reader = r.body.getReader();
   for (;;) { const { value, done } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes?.(got); }
   check?.(parts[0] || new Uint8Array(0), got);
-  return URL.createObjectURL(new Blob(parts, { type }));
+  return concat(parts);
 }
+const toBlobURL = async (url, type, onBytes, check) => URL.createObjectURL(new Blob([await fetchBytes(url, onBytes, check)], { type }));
 const loadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('cannot load ' + src)); document.head.appendChild(s); });
 const lastLogLine = () => $('cvLog').textContent.trim().split('\n').pop() || '';
 
@@ -1035,8 +1470,11 @@ function wasmPrecheck() {
   try { new WebAssembly.Module(new Uint8Array([0, 0x61, 0x73, 0x6d, 1, 0, 0, 0])); }
   catch { throw new Error('WebAssembly is disabled in this browser. Microsoft Edge does this in "Enhanced security mode" (Settings → Privacy, search and services → Enhanced security): add this site as an exception, or use Chrome. The local ffmpeg command below works regardless.'); }
 }
-// Download the three ffmpeg.wasm files, trying each CDN in turn and validating what comes back.
-async function fetchFFmpegFiles() {
+// Get the three ffmpeg.wasm files, trying each CDN in turn and validating what comes back.
+// mode 'blob': download everything into blob: URLs (validated up front; needs an http(s) origin).
+// mode 'data': worker script as a data: URL that imports the core straight from the CDN. Works on a
+//   file:// page too, whose unique origin makes browsers refuse blob: workers.
+async function fetchFFmpegFiles(mode) {
   const isJs   = u8 => { if (u8[0] === 0x3C) throw new Error('got an HTML page instead of JavaScript'); };
   const isWasm = (u8, total) => { if (!(u8[0] === 0 && u8[1] === 0x61 && u8[2] === 0x73 && u8[3] === 0x6D)) throw new Error('not a WebAssembly file'); if (total < 10e6) throw new Error(`ffmpeg-core.wasm is truncated (${fmtSize(total)})`); };
   let lastErr;
@@ -1044,6 +1482,10 @@ async function fetchFFmpegFiles() {
     try {
       convStatus(`Downloading ffmpeg.wasm from ${cdn.name}…`);
       if (!window.FFmpegWASM) await loadScript(cdn.pkg + 'ffmpeg.js');
+      if (mode === 'data') {
+        const worker = dec.decode(await fetchBytes(cdn.pkg + '814.ffmpeg.js', null, isJs));
+        return { classWorkerURL: 'data:text/javascript,' + encodeURIComponent(worker), coreURL: cdn.core + 'ffmpeg-core.js', wasmURL: cdn.core + 'ffmpeg-core.wasm', cdn: cdn.name };
+      }
       const [classWorkerURL, coreURL, wasmURL] = await Promise.all([
         toBlobURL(cdn.pkg + '814.ffmpeg.js', 'text/javascript', null, isJs),
         toBlobURL(cdn.core + 'ffmpeg-core.js', 'text/javascript', null, isJs),
@@ -1057,8 +1499,17 @@ async function fetchFFmpegFiles() {
 async function loadFFmpeg() {
   if (conv.ffmpeg) return conv.ffmpeg;
   wasmPrecheck();
+  const modes = location.protocol === 'file:' ? ['data', 'blob'] : ['blob', 'data'];
+  let lastErr;
+  for (const mode of modes) {
+    try { return await startFFmpeg(mode); }
+    catch (e) { lastErr = e; convLog(`start (${mode} mode): ${e.message}`); if (/^(WebAssembly|Could not download)/.test(e.message)) break; }
+  }
+  throw new Error(`${lastErr.message}${location.protocol === 'file:' ? ' Opening the page from a file:// path limits what the browser allows; serving it over http(s) (GitHub Pages, or "python -m http.server" in the web folder) is the reliable setup.' : ''}`);
+}
+async function startFFmpeg(mode) {
   const t0 = performance.now();
-  const { classWorkerURL, coreURL, wasmURL, cdn } = await fetchFFmpegFiles();
+  const { classWorkerURL, coreURL, wasmURL, cdn } = await fetchFFmpegFiles(mode);
   const ff = new FFmpegWASM.FFmpeg();
   ff.on('log', ({ message }) => convLog(message));
   ff.on('progress', ({ time }) => {
@@ -1084,12 +1535,12 @@ async function loadFFmpeg() {
     ]);
   } catch (e) {
     try { ff.terminate(); } catch {}
-    for (const u of [classWorkerURL, coreURL, wasmURL]) URL.revokeObjectURL(u);
+    for (const u of [classWorkerURL, coreURL, wasmURL]) if (u.startsWith('blob:')) URL.revokeObjectURL(u);
     const tail = lastLogLine();
     throw new Error(`${e.message}${tail ? ` (last ffmpeg message: ${tail})` : ''}. Check the "ffmpeg output" section and the browser console (F12); a browser extension or security policy that blocks workers or WebAssembly causes this.`);
   } finally { window.Worker = RealWorker; }
-  log(`ffmpeg.wasm loaded from ${cdn} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
-  conv.ffmpeg = ff; conv.cdn = cdn;
+  log(`ffmpeg.wasm loaded from ${cdn} (${mode} mode) in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  conv.ffmpeg = ff; conv.cdn = cdn; conv.mode = mode;
   return ff;
 }
 
@@ -1170,6 +1621,12 @@ function renderConvResult() {
 $('cvConvert').onclick = convertVideo;
 $('cvCancel').onclick = () => { if (!conv.running || !conv.ffmpeg) return; conv.cancelled = true; conv.ffmpeg.terminate(); conv.ffmpeg = null; };
 $('cvDownload').onclick = () => { if (conv.result) saveBlob(conv.result.blob, conv.result.name); };
+$('cvPlay').onclick = () => { if (conv.result) playBlob(conv.result.name, conv.result.blob, conv.result.opts.fps); };
+$('cvPlayDev').onclick = () => { if (conv.result) devPlay(joinPath(PLAYER_FOLDER, conv.result.name), conv.result.opts.fps); };   // after uploading
+$('cvPlay').hidden = !FEATURES.browserPlayback;
+$('cvPlayDev').hidden = !FEATURES.devicePlayback;
+$('cvCmdWrap').hidden = !FEATURES.ffmpegCommand;
+$('cvPlay').textContent = FEATURES.devicePlayback ? 'Play here' : 'Play';
 $('cvUpload').onclick = async () => {
   const r = conv.result; if (!r || !tp || busy) return;
   setBusy(true); refreshConv();
