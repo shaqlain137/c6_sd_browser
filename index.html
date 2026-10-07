@@ -72,7 +72,11 @@
   .pill.ok::before { opacity: 1; }
   #caps { margin-top: 18px; }
   #caps div { display: inline-block; margin: 0 10px; }
-  input[type=text], input[type=number], select {
+  .filters { margin-bottom: 12px; }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--fg); }
+  td.when { font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  input[type=text], input[type=number], input[type=datetime-local], select {
     font: inherit; font-size: 15px; letter-spacing: -0.016em; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
     background: var(--card); color: var(--fg); width: 100%; transition: border-color .15s, box-shadow .15s;
   }
@@ -88,6 +92,7 @@
   .ic { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 10px; background: currentColor; -webkit-mask: var(--svg) center / contain no-repeat; mask: var(--svg) center / contain no-repeat; }
   .ic.folder { color: var(--accent); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 6.5A2.5 2.5 0 0 1 5.5 4h4.1c.7 0 1.3.3 1.8.7L13 6.3h5.5A2.5 2.5 0 0 1 21 8.8v8.7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z'/%3E%3C/svg%3E"); }
   .ic.file { color: var(--muted); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 2.5h6.8L19 8.2v11.3a2 2 0 0 1-2 2h-10.5a2 2 0 0 1-2-2v-15a2 2 0 0 1 2-2zm6.5 1.5v4.5h4.5z'/%3E%3C/svg%3E"); }
+  .ic.home { color: var(--accent); width: 16px; height: 16px; margin-right: 5px; vertical-align: -2px; --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3.2l9 7.6-1.3 1.5-1.2-1v8.2a1.5 1.5 0 0 1-1.5 1.5h-4v-6h-2v6h-4A1.5 1.5 0 0 1 5.5 19.5v-8.2l-1.2 1L3 10.8z'/%3E%3C/svg%3E"); }
   .ic.up { color: var(--muted); --svg: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 4.5l-7 7 1.5 1.5 4.5-4.5V20h2V8.5l4.5 4.5 1.5-1.5z'/%3E%3C/svg%3E"); }
 
   /* ---- file browser ---- */
@@ -188,6 +193,37 @@
     .wheel-center, .wheel-center:hover { background: #48484b; color: #ffffff; } .wheel-center:hover { background: #5a5a5e; }
   }
 
+  /* ---- CSV viewer (spreadsheet look) ---- */
+  dialog.sheet { width: min(1200px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+  .sheet-wrap { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px; height: calc(100vh - 32px); max-height: 860px; }
+  .sheet-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .sheet-head h2 { font-size: 17px; letter-spacing: -0.02em; word-break: break-all; }
+  .sheet-bar { display: flex; align-items: center; gap: 0; border: 1px solid #c8c8c8; border-radius: 6px; overflow: hidden; font: 13px/1.4 var(--mono); background: #fff; color: #1d1d1f; }
+  .sheet-ref { padding: 5px 10px; min-width: 64px; text-align: center; border-right: 1px solid #c8c8c8; background: #f2f2f2; font-family: inherit; }
+  .sheet-val { padding: 5px 10px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sheet-grid { flex: 1; min-height: 240px; overflow: auto; border: 1px solid #c8c8c8; border-radius: 6px; background: #fff; color: #1d1d1f; }
+  #csvTable { border-collapse: separate; border-spacing: 0; table-layout: fixed; font: 13px/1.35 Calibri, "Segoe UI", -apple-system, system-ui, sans-serif; letter-spacing: 0; }
+  #csvTable th, #csvTable td { border-right: 1px solid #d4d4d4; border-bottom: 1px solid #d4d4d4; padding: 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; height: 20px; text-align: left; vertical-align: middle; font-weight: 400; color: inherit; }
+  #csvTable thead th { position: sticky; top: 0; z-index: 3; background: #f2f2f2; color: #444; text-align: center; font-weight: 400; cursor: pointer; user-select: none; }
+  #csvTable thead th:first-child, #csvTable tbody th { position: sticky; left: 0; z-index: 2; background: #f2f2f2; color: #444; text-align: center; width: 44px; min-width: 44px; cursor: default; }
+  #csvTable thead th:first-child { z-index: 4; }
+  #csvTable thead th.on { background: #d6e5d6; color: #1e4620; }
+  #csvTable tr.hdr td { font-weight: 700; background: #f7f7f7; }
+  #csvTable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  #csvTable td.sel { outline: 2px solid #217346; outline-offset: -2px; background: #e8f3ea; }
+  #csvTable tbody tr:hover td { background: #f5f8ff; }
+  #csvTable tbody tr:hover td.sel { background: #e8f3ea; }
+  .sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  @media (prefers-color-scheme: dark) {
+    .sheet-bar, .sheet-grid { background: #1f1f21; color: #f5f5f7; border-color: #3a3a3d; }
+    .sheet-ref, #csvTable thead th, #csvTable thead th:first-child, #csvTable tbody th { background: #2a2a2d; color: #c7c7cc; border-color: #3a3a3d; }
+    #csvTable th, #csvTable td { border-color: #3a3a3d; }
+    #csvTable tr.hdr td { background: #262628; }
+    #csvTable thead th.on { background: #1f3a22; color: #9fe3a8; }
+    #csvTable td.sel { background: #1f3a22; outline-color: #34c759; }
+    #csvTable tbody tr:hover td { background: #26282e; }
+  }
+
   /* ---- MJPEG player ---- */
   dialog.player { width: min(760px, calc(100vw - 32px)); background: #0b0b0d; color: #f5f5f7; }
   .player-wrap { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px 20px; }
@@ -269,9 +305,22 @@
       <button id="selDelete" class="secondary danger">Delete</button>
       <button id="selClear" class="secondary">Clear</button>
     </div>
+    <div class="row filters" id="filters">
+      <input id="fltName" type="text" placeholder="Filter by name" autocomplete="off" style="flex:1;min-width:160px">
+      <select id="fltWhen" style="width:auto">
+        <option value="any">Any time</option>
+        <option value="today">Today</option>
+        <option value="7">Last 7 days</option>
+        <option value="30">Last 30 days</option>
+        <option value="custom">Date range…</option>
+      </select>
+      <input id="fltFrom" type="datetime-local" style="width:auto" hidden>
+      <input id="fltTo" type="datetime-local" style="width:auto" hidden>
+      <span id="fltCount" class="small muted"></span>
+    </div>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th>Name</th><th class="num">Size</th><th class="hide-sm">Modified</th><th></th></tr></thead>
+        <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th class="sortable" data-sort="name">Name</th><th class="num sortable" data-sort="size">Size</th><th class="sortable" data-sort="time">Modified</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -367,6 +416,10 @@
         <div class="conv-preview">
           <div class="small muted">Preview of the output frame</div>
           <canvas id="cvCanvas" width="172" height="320"></canvas>
+          <div class="row" style="width:100%;gap:8px">
+            <button id="cvPlaySrc" class="secondary" style="padding:5px 12px;font-size:12px" disabled>Play</button>
+            <input id="cvScrub" type="range" min="0" max="1000" value="0" style="flex:1" disabled aria-label="position in the source video">
+          </div>
           <div id="cvPreviewNote" class="tiny muted"></div>
           <video id="cvVideo" class="offscreen" muted playsinline preload="auto"></video>
         </div>
@@ -412,6 +465,40 @@
   </section>
 </div>
 <footer class="foot">Works in Chrome and Edge on the desktop and in Chrome on Android. Made for the Waveshare ESP32‑C6‑LCD‑1.47.</footer>
+
+<!-- CSV viewer: a spreadsheet-style grid for .csv / .tsv files on the card -->
+<dialog id="csvDlg" class="sheet">
+  <div class="sheet-wrap">
+    <div class="sheet-head">
+      <h2 id="csvTitle"></h2>
+      <span id="csvInfo" class="small muted tabular"></span>
+      <div class="row" style="margin-left:auto">
+        <input id="csvSearch" type="text" placeholder="Find in rows" autocomplete="off" style="width:180px;padding:6px 10px;font-size:13px">
+        <select id="csvDelim" style="width:auto;padding:6px 10px;font-size:13px" title="Column separator"><option value="auto">Auto</option><option value=",">Comma</option><option value=";">Semicolon</option><option value="	">Tab</option><option value="|">Pipe</option></select>
+        <label class="small muted" style="display:inline-flex;align-items:center;gap:6px"><input id="csvHeader" type="checkbox" checked> Header row</label>
+        <button type="button" class="secondary" id="csvDownload" style="padding:6px 12px;font-size:13px">Download</button>
+        <button type="button" class="secondary" id="csvClose" style="padding:6px 12px;font-size:13px">Close</button>
+      </div>
+    </div>
+    <div class="sheet-bar"><span id="csvRef" class="sheet-ref">A1</span><span id="csvVal" class="sheet-val"></span></div>
+    <div class="sheet-grid" id="csvGrid"><table id="csvTable"><thead></thead><tbody></tbody></table></div>
+    <div class="sheet-foot"><span id="csvFoot" class="small muted"></span><button type="button" class="secondary" id="csvMore" style="padding:5px 12px;font-size:12px" hidden>Show more rows</button></div>
+  </div>
+</dialog>
+
+<!-- Connection trouble: shown when the link stops answering -->
+<dialog id="linkDlg">
+  <form method="dialog">
+    <h2>The connection is not responding.</h2>
+    <p id="linkMsg" class="small muted" style="margin:0"></p>
+    <footer>
+      <button type="button" class="secondary" id="linkDismiss">Dismiss</button>
+      <button type="button" class="secondary" id="linkReload">Reload page</button>
+      <button type="button" class="secondary" id="linkReconnect">Reconnect</button>
+      <button type="button" id="linkRetry">Retry</button>
+    </footer>
+  </form>
+</dialog>
 
 <!-- Name prompt: rename / new folder -->
 <dialog id="nameDlg">
@@ -487,7 +574,9 @@ const enc = new TextEncoder(), dec = new TextDecoder();
 const $ = id => document.getElementById(id);
 const log = m => { const el = $('log'); el.textContent += `[${new Date().toLocaleTimeString()}] ${m}\n`; el.scrollTop = el.scrollHeight; };
 const fmtSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${(n/1024).toFixed(1)} KB` : n < 1073741824 ? `${(n/1048576).toFixed(1)} MB` : `${(n/1073741824).toFixed(2)} GB`;
-const fmtTime = t => t ? new Date(t * 1000).toLocaleString() : '';
+// FAT stamps files written without a clock as 1 Jan 1980; that is not a date worth showing, so anything
+// before 1981 is treated as "no date". Real dates (card-reader copies, uploads with firmware 0.6.2+) show in full.
+const fmtTime = t => t > 347155200 /* 1 Jan 1981 */ ? new Date(t * 1000).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 const joinPath = (dir, name) => (dir === '/' ? '' : dir) + '/' + name;
 const baseName = p => p.slice(p.lastIndexOf('/') + 1);
 const concat = chunks => { let n = 0; for (const c of chunks) n += c.length; const out = new Uint8Array(n); let o = 0; for (const c of chunks) { out.set(c, o); o += c.length; } return out; };
@@ -543,6 +632,7 @@ class RequestTransport {
   play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play a clip on the board's LCD ("*" = whole /mjpeg folder)
   stop()            { return this.json('S'); }
   control(action)   { return this.json('X ' + action); }         // pause | resume | toggle | next | prev | restart | loop all|one|off
+  setClock()        { const d = new Date(); return this.json(`Z ${Math.floor(d.getTime() / 1000)}\t${-d.getTimezoneOffset()}`); }   // firmware 0.6.2+
   screenTest()      { return this.json('T'); }                   // colour bars + orientation line on the LCD
   copy(src, dst)    { return this.json(`C ${src}\t${dst}`, LONG_OP_MS); }
 
@@ -562,7 +652,8 @@ class RequestTransport {
   // Upload: handshake, then one piece in flight at a time, each acked by the device.
   async writeFile(path, blob, onProgress) {
     const size = blob.size, chunk = this.uploadChunk;
-    const hs = await this.json(`W ${path}\t${size}\t${chunk}`, 20000);
+    const mtime = Math.floor((blob.lastModified || Date.now()) / 1000);      // keep the file's original date on the card
+    const hs = await this.json(`W ${path}\t${size}\t${chunk}\t${mtime}`, 20000);
     if (size === 0) return hs;
     let off = 0, last = null;
     while (off < size) {
@@ -592,6 +683,10 @@ class BleTransport extends RequestTransport {
     if (!navigator.bluetooth) throw new Error('Web Bluetooth is not available in this browser (use Chrome/Edge on desktop or Android).');
     this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC_UUID] }] });
     this.device.addEventListener('gattserverdisconnected', () => { this._fail(new Error('BLE disconnected')); onDisconnect(); });
+    await this._open();
+    this.label = this.device.name || 'BLE device';
+  }
+  async _open() {
     const gatt = await this.device.gatt.connect();
     const svc  = await gatt.getPrimaryService(SVC_UUID);
     this.cmd   = await svc.getCharacteristic(CMD_UUID);
@@ -599,7 +694,13 @@ class BleTransport extends RequestTransport {
     this.up    = await svc.getCharacteristic(UP_UUID);
     this.data.addEventListener('characteristicvaluechanged', e => this._onFrame(e.target.value));
     await this.data.startNotifications();
-    this.label = this.device.name || 'BLE device';
+    this.pending = null; this.nPkts = 0; this.nPktBytes = 0; this.mtu = 23; this.fastWrite = false; this.pieces = false;
+  }
+  // Re-open the same device without the chooser (used by the connection-trouble dialog).
+  async reconnect() {
+    if (!this.device) throw new Error('no device to reconnect to');
+    try { this.device.gatt.disconnect(); } catch {}
+    await this._open();
   }
   async disconnect() { try { this.device?.gatt?.disconnect(); } catch {} }
   // A command longer than one ATT packet would need the central's "long write" procedure, which not
@@ -645,18 +746,29 @@ class UsbTransport extends RequestTransport {
   async connect(onDisconnect) {
     if (!navigator.serial) throw new Error('Web Serial is not available in this browser (use Chrome/Edge on desktop).');
     this.port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
-    await this.port.open({ baudRate: 921600, bufferSize: 256 * 1024 });
     this.port.addEventListener('disconnect', () => { this._fail(new Error('USB disconnected')); onDisconnect(); });
-    this.writer = this.port.writable.getWriter();
-    this._readLoop();
+    await this._open();
     const i = this.port.getInfo();
     this.label = `USB ${i.usbVendorId?.toString(16) ?? ''}:${i.usbProductId?.toString(16) ?? ''}`;
+  }
+  async _open() {
+    this.closing = false; this.buf = new Uint8Array(0); this.pending = null;
+    await this.port.open({ baudRate: 921600, bufferSize: 256 * 1024 });
+    this.writer = this.port.writable.getWriter();
+    this._readLoop();
   }
   async disconnect() {
     this.closing = true;
     try { await this.reader?.cancel(); } catch {}
     try { this.writer?.releaseLock(); } catch {}
     try { await this.port?.close(); } catch {}
+  }
+  // Close and re-open the same port without the chooser (used by the connection-trouble dialog).
+  async reconnect() {
+    if (!this.port) throw new Error('no port to reconnect to');
+    await this.disconnect();
+    await new Promise(r => setTimeout(r, 300));
+    await this._open();
   }
   _send(cmd) { this._parse(); return this.writer.write(enc.encode(cmd + '\n')); }
   _sendRaw(u8) { return this.writer.write(u8); }
@@ -713,7 +825,7 @@ const DRAG_TYPE = 'application/x-c6sd-names';     // internal row drags (vs. fil
 //   browserPlayback: the in-page MJPEG player and file preview.
 //   devicePlayback:  playing on the board's own LCD ("Play on C6", the Now-playing card, Stop on C6).
 //   ffmpegCommand:   the "Same conversion with a local ffmpeg" block under the converter options.
-const FEATURES = { browserPlayback: true, devicePlayback: false, ffmpegCommand: false };
+const FEATURES = { browserPlayback: true, devicePlayback: true, ffmpegCommand: false };
 let tp = null, cwd = '/', busy = false, entries = [];
 const selected = new Set();                         // names selected in cwd
 let anchor = null;                                  // last toggled name, for shift-click ranges
@@ -743,8 +855,33 @@ async function attach(transport) {
   $('btnDisc').disabled = false;
   $('browser').hidden = false;
   await refreshInfo();
+  try { await tp.setClock(); } catch {}          // older firmware answers "unknown command"; harmless
   if (tp.kind === 'BLE') log('Tip: for big files, plug in USB-C and use "Connect USB" — it is 10–50× faster than BLE.');
   await navigate('/');
+}
+// ---------------- connection trouble: never leave the user staring at a stuck page ----------------
+const isLinkError = e => /timeout|disconnect|in flight|GATT|NetworkError|lost|not open|closed|port|device/i.test(e?.message || '');
+let linkRetry = null;
+function linkTrouble(e, retry) {
+  linkRetry = retry || null;
+  $('linkMsg').textContent = `${tp ? tp.kind : 'The'} link stopped answering (${e.message}). The board may be busy, unplugged or out of range. Retry the action, reconnect the link, or reload the page.`;
+  $('linkRetry').hidden = !retry; $('linkReconnect').hidden = !tp;
+  const d = $('linkDlg'); if (!d.open) d.showModal();
+}
+$('linkDismiss').onclick = () => $('linkDlg').close();
+$('linkReload').onclick = () => location.reload();
+$('linkRetry').onclick = () => { const r = linkRetry; $('linkDlg').close(); r?.(); };
+$('linkReconnect').onclick = async () => { const r = linkRetry; $('linkDlg').close(); if (await reconnectLink()) r?.(); };
+async function reconnectLink() {
+  const t = tp; if (!t) return false;
+  setStatus('reconnecting…'); log(`${t.kind}: reconnecting`);
+  try {
+    tp = null; await t.disconnect(); await t.reconnect();
+    setBusy(false); await attach(t); log(`${t.kind}: reconnected`); return true;
+  } catch (e) {
+    log(`${t.kind}: reconnect failed: ${e.message}`); setStatus('disconnected'); $('browser').hidden = true;
+    linkTrouble(e, null); return false;
+  }
 }
 async function refreshInfo() {
   try {
@@ -834,14 +971,16 @@ async function navigate(path) {
     selected.clear(); anchor = null;
     renderCrumbs(); renderRows(entries);
     log(`list ${cwd}: ${entries.length} entries in ${Math.round(performance.now() - t0)} ms${res.truncated ? ' (truncated)' : ''}`);
-  } catch (e) { log(`list ${path} failed: ${e.message}`); }
+  } catch (e) { log(`list ${path} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => navigate(path)); }
   finally { setBusy(false); }
 }
 const parentOf = p => p.slice(0, p.lastIndexOf('/')) || '/';
+// The root crumb is a house icon with "Home" rather than "/", which means nothing to most people.
+const homeCrumb = (a) => { a.innerHTML = '<span class="ic home"></span>Home'; a.title = 'Top of the card'; return a; };
 function renderCrumbs() {
   const parts = cwd.split('/').filter(Boolean), c = $('crumbs'); c.innerHTML = '';
   const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => navigate(p); if (p !== cwd) makeDropTarget(a, p); return a; };
-  c.appendChild(mk('/', '/'));
+  c.appendChild(homeCrumb(mk('', '/')));
   let acc = '';
   parts.forEach(seg => { acc += '/' + seg; c.appendChild(Object.assign(document.createElement('span'), { className: 'sep', textContent: '›' })); c.appendChild(mk(seg, acc)); });
 }
@@ -850,32 +989,65 @@ const escapeHtml = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', 
 const isPreviewable = n => /\.(txt|log|csv|json|ini|md|html?|png|jpe?g|gif|bmp)$/i.test(n);
 const PREVIEW_MAX = 2 * 1024 * 1024;
 
-function renderRows(list) {
-  list.sort((a, b) => (b.d - a.d) || a.n.localeCompare(b.n, undefined, { numeric: true }));
+// ---------------- filter + sort of the listing ----------------
+const view = { q: '', when: 'any', from: 0, to: 0, sort: 'name', dir: 1 };
+let viewRows = [];                                   // the entries currently rendered, in order
+function applyView(list) {
+  const q = view.q.trim().toLowerCase(), now = Date.now() / 1000;
+  let from = 0, to = Infinity;
+  if (view.when === 'today') { const d = new Date(); d.setHours(0, 0, 0, 0); from = d.getTime() / 1000; }
+  else if (view.when === '7') from = now - 7 * 86400;
+  else if (view.when === '30') from = now - 30 * 86400;
+  else if (view.when === 'custom') { from = view.from || 0; to = view.to || Infinity; }
+  const out = list.filter(e => (!q || e.n.toLowerCase().includes(q)) && (e.d || view.when === 'any' || ((e.t || 0) >= from && (e.t || 0) <= to)));   // folders always stay reachable
+  const cmp = { name: (a, b) => a.n.localeCompare(b.n, undefined, { numeric: true }), size: (a, b) => (a.s || 0) - (b.s || 0), time: (a, b) => (a.t || 0) - (b.t || 0) }[view.sort];
+  out.sort((a, b) => (b.d - a.d) || view.dir * cmp(a, b) || a.n.localeCompare(b.n, undefined, { numeric: true }));
+  return out;
+}
+function syncViewControls() {
+  $('fltFrom').hidden = $('fltTo').hidden = view.when !== 'custom';
+  for (const th of document.querySelectorAll('th.sortable')) {
+    const base = th.dataset.sort === 'name' ? 'Name' : th.dataset.sort === 'size' ? 'Size' : 'Modified';
+    th.textContent = th.dataset.sort === view.sort ? `${base} ${view.dir > 0 ? '▲' : '▼'}` : base;
+  }
+}
+$('fltName').addEventListener('input', () => { view.q = $('fltName').value; renderRows(entries); });
+$('fltWhen').addEventListener('input', () => { view.when = $('fltWhen').value; syncViewControls(); renderRows(entries); });
+$('fltFrom').addEventListener('input', () => { view.from = $('fltFrom').value ? new Date($('fltFrom').value).getTime() / 1000 : 0; renderRows(entries); });
+$('fltTo').addEventListener('input', () => { view.to = $('fltTo').value ? new Date($('fltTo').value).getTime() / 1000 : 0; renderRows(entries); });
+for (const th of document.querySelectorAll('th.sortable')) th.onclick = () => { if (view.sort === th.dataset.sort) view.dir = -view.dir; else { view.sort = th.dataset.sort; view.dir = th.dataset.sort === 'time' ? -1 : 1; } syncViewControls(); renderRows(entries); };
+syncViewControls();
+
+function renderRows(all) {
+  const list = applyView(all); viewRows = list;
+  $('fltCount').textContent = list.length !== all.length ? `${list.length} of ${all.length} shown` : '';
   const tb = $('rows'); tb.innerHTML = '';
   if (cwd !== '/') {
     const tr = document.createElement('tr'); tr.className = 'entry';
-    tr.innerHTML = `<td class="chk"></td><td class="name"><span class="ic up"></span>..</td><td></td><td class="hide-sm"></td><td></td>`;
+    tr.innerHTML = `<td class="chk"></td><td class="name"><span class="ic up"></span>..</td><td></td><td></td><td></td>`;
     tr.onclick = () => navigate(parentOf(cwd));
     makeDropTarget(tr, parentOf(cwd));
     tb.appendChild(tr);
   }
-  if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = '<td colspan=5 class="muted">(empty)</td>'; tb.appendChild(tr); }
+  if (!list.length) { const tr = document.createElement('tr'); tr.innerHTML = `<td colspan=5 class="muted">${all.length ? '(nothing matches the filter)' : '(empty)'}</td>`; tb.appendChild(tr); }
   for (const e of list) {
     const tr = document.createElement('tr'); tr.className = 'entry'; tr.dataset.name = e.n;
     const full = joinPath(cwd, e.n), canPreview = !e.d && isPreviewable(e.n) && e.s <= PREVIEW_MAX, canPlay = !e.d && isMjpeg(e.n);
+    const browserPlay = FEATURES.browserPlayback && tp?.kind !== 'BLE';   // streaming a clip over BLE is too slow to be useful
+    const canSheet = !e.d && isCsv(e.n) && e.s <= CSV_MAX;
     tr.innerHTML = `<td class="chk"><input type="checkbox" aria-label="select"></td>
                     <td class="name"><span class="ic ${e.d ? 'folder' : 'file'}"></span>${escapeHtml(e.n)}</td>
                     <td class="num">${e.d ? '' : fmtSize(e.s)}</td>
-                    <td class="hide-sm small muted">${fmtTime(e.t)}</td>
+                    <td class="when">${fmtTime(e.t)}</td>
                     <td class="actions"></td>`;
     tr.querySelector('input').onclick = ev => { ev.stopPropagation(); toggleSelect(e.n, ev.shiftKey); };
     const act = tr.querySelector('.actions');
     const btn = (label, fn, cls = 'secondary') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; act.appendChild(b); };
     if (canPlay && FEATURES.devicePlayback) btn('Play on C6', () => devPlay(full), '');
-    if (canPlay && FEATURES.browserPlayback) btn(FEATURES.devicePlayback ? 'Play here' : 'Play', () => playFromCard(full, e.s), FEATURES.devicePlayback ? 'secondary' : '');
+    if (canPlay && browserPlay) btn(FEATURES.devicePlayback ? 'Play here' : 'Play', () => playFromCard(full, e.s), FEATURES.devicePlayback ? 'secondary' : '');
+    if (canSheet) btn('Open', () => openCsv(full, e.n, e.s), '');
     if (!e.d) btn('Download', () => download(full, e.s));
-    if (canPreview && FEATURES.browserPlayback) btn('Preview', () => preview(full, e.n, e.s));
+    if (canPreview && !canSheet && FEATURES.browserPlayback) btn('Preview', () => preview(full, e.n, e.s));
     btn('Rename', () => renameEntry(e));
     btn('Copy to…', () => moveCopy('copy', [e]));
     btn('Move to…', () => moveCopy('move', [e]));
@@ -883,7 +1055,8 @@ function renderRows(list) {
     tr.onclick = ev => {
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { toggleSelect(e.n, ev.shiftKey); return; }
       if (e.d) navigate(full);
-      else if (canPlay && FEATURES.browserPlayback) playFromCard(full, e.s);
+      else if (canSheet) openCsv(full, e.n, e.s);
+      else if (canPlay && browserPlay) playFromCard(full, e.s);
       else if (canPlay && FEATURES.devicePlayback) devPlay(full);
       else if (canPreview && FEATURES.browserPlayback) preview(full, e.n, e.s);
       else download(full, e.s);
@@ -905,8 +1078,8 @@ function renderRows(list) {
 const selEntries = () => entries.filter(e => selected.has(e.n));
 function toggleSelect(name, range) {
   if (range && anchor != null && anchor !== name) {
-    const i = entries.findIndex(e => e.n === anchor), j = entries.findIndex(e => e.n === name);
-    if (i >= 0 && j >= 0) { for (let k = Math.min(i, j); k <= Math.max(i, j); k++) selected.add(entries[k].n); updateSelection(); return; }
+    const i = viewRows.findIndex(e => e.n === anchor), j = viewRows.findIndex(e => e.n === name);
+    if (i >= 0 && j >= 0) { for (let k = Math.min(i, j); k <= Math.max(i, j); k++) selected.add(viewRows[k].n); updateSelection(); return; }
   }
   selected.has(name) ? selected.delete(name) : selected.add(name);
   anchor = name; updateSelection();
@@ -916,15 +1089,15 @@ function updateSelection() {
     const on = selected.has(tr.dataset.name);
     tr.classList.toggle('selected', on); tr.querySelector('input').checked = on;
   }
-  const n = selected.size, all = $('selAll');
-  all.checked = n > 0 && n === entries.length; all.indeterminate = n > 0 && n < entries.length; all.disabled = !entries.length;
+  const n = selected.size, all = $('selAll'), shown = viewRows.length;
+  all.checked = n > 0 && n === shown; all.indeterminate = n > 0 && n < shown; all.disabled = !shown;
   $('selbar').hidden = !n;
   if (!n) return;
   const dirs = selEntries().filter(e => e.d).length;
   $('selCount').textContent = `${n} selected${dirs ? ` (${dirs} folder${dirs > 1 ? 's' : ''})` : ''}`;
   $('selDownload').disabled = busy || dirs === n;
 }
-$('selAll').onclick = () => { if (selected.size === entries.length) selected.clear(); else for (const e of entries) selected.add(e.n); updateSelection(); };
+$('selAll').onclick = () => { if (selected.size === viewRows.length) selected.clear(); else for (const e of viewRows) selected.add(e.n); updateSelection(); };
 $('selClear').onclick = () => { selected.clear(); updateSelection(); };
 $('selMove').onclick = () => moveCopy('move', selEntries());
 $('selCopy').onclick = () => moveCopy('copy', selEntries());
@@ -934,7 +1107,7 @@ document.addEventListener('keydown', ev => {
   if ($('browser').hidden || document.querySelector('dialog[open]') || /^(INPUT|TEXTAREA)$/.test(ev.target.tagName)) return;
   if (ev.key === 'Escape' && selected.size) { selected.clear(); updateSelection(); }
   else if (ev.key === 'Delete' && selected.size && !busy) deleteEntries(selEntries());
-  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a' && entries.length) { ev.preventDefault(); for (const e of entries) selected.add(e.n); updateSelection(); }
+  else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'a' && viewRows.length) { ev.preventDefault(); for (const e of viewRows) selected.add(e.n); updateSelection(); }
 });
 
 // ---------------- drag & drop (internal moves) ----------------
@@ -1028,7 +1201,7 @@ function pickFolder({ mode, items, title, okLabel }) {
   function render() {
     const c = $('pickCrumbs'); c.innerHTML = '';
     const mk = (label, p) => { const a = document.createElement('a'); a.textContent = label; a.onclick = () => load(p); return a; };
-    c.appendChild(mk('/', '/'));
+    c.appendChild(homeCrumb(mk('', '/')));
     let acc = '';
     for (const seg of dir.split('/').filter(Boolean)) { acc += '/' + seg; c.appendChild(Object.assign(document.createElement('span'), { className: 'sep', textContent: '›' })); c.appendChild(mk(seg, acc)); }
     list.innerHTML = '';
@@ -1107,7 +1280,7 @@ async function download(path, size) {
   const name = baseName(path);
   setBusy(true);
   try { saveBlob(await fetchBlob(path, size), name); }
-  catch (e) { log(`download ${name} failed: ${e.message}`); }
+  catch (e) { log(`download ${name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => download(path, size)); else alert(`Download of ${name} failed:\n${e.message}`); }
   finally { setBusy(false); }
 }
 async function downloadMany(list) {
@@ -1129,7 +1302,7 @@ async function preview(path, name, size) {
     const h = document.createElement('div'); h.className = 'small muted'; h.textContent = name; pv.appendChild(h);
     if (/\.(png|jpe?g|gif|bmp)$/i.test(name)) { const img = new Image(); img.src = URL.createObjectURL(blob); pv.appendChild(img); }
     else { const pre = document.createElement('pre'); pre.textContent = await blob.text(); pv.appendChild(pre); }
-  } catch (e) { log(`preview ${name} failed: ${e.message}`); }
+  } catch (e) { log(`preview ${name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => preview(path, name, size)); }
   finally { setBusy(false); }
 }
 
@@ -1138,18 +1311,21 @@ async function preview(path, name, size) {
 async function runBatch(tasks) {
   if (busy || !tp || !tasks.length) return;
   setBusy(true);
+  let linkFail = null;
   try {
     for (let k = 0; k < tasks.length; k++) {
       const t = tasks[k], t0 = performance.now();
       try { const r = await t.run(); log(`${t.label}: ok${r && r.copied != null ? ` (${fmtSize(r.copied)})` : ''} in ${((performance.now() - t0) / 1000).toFixed(1)} s`); }
       catch (e) {
         log(`${t.label} failed: ${e.message}`);
+        if (isLinkError(e)) { linkFail = { e, rest: tasks.slice(k) }; break; }
         const left = tasks.length - k - 1;
         if (!left) { alert(`${t.label} failed:\n${e.message}`); break; }
         if (!confirm(`${t.label} failed:\n${e.message}\n\nContinue with the remaining ${left} item${left > 1 ? 's' : ''}?`)) break;
       }
     }
-  } finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
+  } finally { setBusy(false); if (!linkFail) { await navigate(cwd); await refreshInfo(); } }
+  if (linkFail) linkTrouble(linkFail.e, () => runBatch(linkFail.rest));
 }
 
 async function renameEntry(e) {
@@ -1185,15 +1361,22 @@ $('btnMkdir').onclick = async () => {
 async function uploadFiles(files) {
   if (busy || !tp || !files.length) return;
   setBusy(true);
+  let linkFail = null;
   try {
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       if (!validName(file.name)) { log(`upload skipped (bad name): ${file.name}`); continue; }
       const path = joinPath(cwd, file.name);
       if (entries.some(e => e.n === file.name) && !confirm(`"${file.name}" already exists here. Overwrite?`)) { log(`upload skipped: ${file.name}`); continue; }
       try { await putFile(path, file); }
-      catch (e) { log(`upload ${file.name} failed: ${e.message}`); alert(`Upload of ${file.name} failed:\n${e.message}`); break; }
+      catch (e) {
+        log(`upload ${file.name} failed: ${e.message}`);
+        if (isLinkError(e)) { linkFail = { e, rest: files.slice(i) }; break; }
+        alert(`Upload of ${file.name} failed:\n${e.message}`); break;
+      }
     }
-  } finally { setBusy(false); await navigate(cwd); await refreshInfo(); }
+  } finally { setBusy(false); if (!linkFail) { await navigate(cwd); await refreshInfo(); } }
+  if (linkFail) linkTrouble(linkFail.e, () => uploadFiles(linkFail.rest));
 }
 // Upload one blob to a full path with progress; throws on failure.
 async function putFile(path, blob) {
@@ -1218,17 +1401,139 @@ $('fileInput').onchange = e => { const f = [...e.target.files]; e.target.value =
 }
 
 // ============================================================================
+// CSV viewer: parses .csv / .tsv (quotes, embedded newlines, auto-detected separator) and shows
+// it as a spreadsheet: column letters, row numbers, a formula bar, sort by column, find.
+// ============================================================================
+const isCsv = n => /\.(csv|tsv)$/i.test(n);
+const CSV_MAX = 16 * 1024 * 1024, CSV_PAGE = 2000;
+const csv = { name: '', path: '', size: 0, text: '', rows: [], view: [], shown: 0, sort: -1, dir: 1, sel: null };
+const colName = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = (i - 1 - m) / 26; } return s; };
+function csvDetectDelim(text) {
+  const head = text.slice(0, 20000).split(/\r?\n/).slice(0, 10);
+  let best = ',', bestScore = -1;
+  for (const d of [',', ';', '\t', '|']) {
+    const counts = head.map(l => l.split(d).length - 1).filter(c => c > 0);
+    if (!counts.length) continue;
+    const avg = counts.reduce((a, b) => a + b, 0) / counts.length, consistent = counts.every(c => c === counts[0]);
+    const score = avg * (consistent ? 2 : 1);
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return best;
+}
+function csvParse(text, delim) {
+  const rows = []; let row = [], field = '', q = false, i = 0; const n = text.length;
+  if (text.charCodeAt(0) === 0xFEFF) i = 1;                            // BOM
+  for (; i < n; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; }
+      else field += c;
+    } else if (c === '"' && field === '') q = true;           // a quote only opens a field at its start; elsewhere it is a literal, as in Excel
+    else if (c === delim) { row.push(field); field = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+    else field += c;
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row); }
+  if (rows.length && rows[rows.length - 1].length === 1 && rows[rows.length - 1][0] === '') rows.pop();   // trailing newline
+  return rows;
+}
+const isNumCell = v => v !== '' && /^-?\s*[\d,]*\.?\d+(e[-+]?\d+)?%?$/i.test(v.trim());
+const numOf = v => parseFloat(v.replace(/[,%\s]/g, ''));
+function csvOpenText() {
+  const delim = $('csvDelim').value === 'auto' ? csvDetectDelim(csv.text) : $('csvDelim').value;
+  csv.rows = csvParse(csv.text, delim);
+  csv.sort = -1; csv.dir = 1; csv.sel = null;
+  csvRender();
+}
+function csvRender() {
+  const header = $('csvHeader').checked && csv.rows.length > 1, q = $('csvSearch').value.trim().toLowerCase();
+  const head = header ? csv.rows[0] : null;
+  let body = header ? csv.rows.slice(1) : csv.rows.slice();
+  const cols = csv.rows.reduce((m, r) => Math.max(m, r.length), 0);
+  if (q) body = body.filter(r => r.some(v => v.toLowerCase().includes(q)));
+  if (csv.sort >= 0) {
+    const k = csv.sort, numeric = body.length && body.every(r => (r[k] ?? '') === '' || isNumCell(r[k] ?? ''));
+    body.sort((a, b) => { const x = a[k] ?? '', y = b[k] ?? ''; return csv.dir * (numeric ? (numOf(x) || 0) - (numOf(y) || 0) : x.localeCompare(y, undefined, { numeric: true })); });
+  }
+  csv.view = body; csv.shown = Math.min(CSV_PAGE, body.length);
+  const widths = []; const sample = (head ? [head] : []).concat(body.slice(0, 300));
+  for (let c = 0; c < cols; c++) widths[c] = Math.max(6, Math.min(44, sample.reduce((m, r) => Math.max(m, (r[c] ?? '').length), 0) + 2));
+  const thead = $('csvTable').querySelector('thead');
+  thead.innerHTML = '<tr><th></th>' + Array.from({ length: cols }, (_, c) => `<th data-col="${c}" class="${csv.sort === c ? 'on' : ''}" style="width:${widths[c]}ch;min-width:${widths[c]}ch">${colName(c)}${csv.sort === c ? (csv.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('') + '</tr>';
+  for (const th of thead.querySelectorAll('th[data-col]')) th.onclick = () => { const c = +th.dataset.col; if (csv.sort === c) { if (csv.dir > 0) csv.dir = -1; else { csv.sort = -1; csv.dir = 1; } } else { csv.sort = c; csv.dir = 1; } csvRender(); };
+  const tbody = $('csvTable').querySelector('tbody'); tbody.innerHTML = '';
+  if (head) tbody.appendChild(csvRow(head, 1, cols, true));
+  csvAppendRows(0);
+  $('csvInfo').textContent = `${csv.rows.length.toLocaleString()} rows × ${cols} columns · ${fmtSize(csv.size)}`;
+  csvSelect(null);
+}
+function csvRow(r, num, cols, isHeader) {
+  const tr = document.createElement('tr'); if (isHeader) tr.className = 'hdr';
+  tr.innerHTML = `<th>${num}</th>` + Array.from({ length: cols }, (_, c) => { const v = r[c] ?? ''; return `<td class="${!isHeader && isNumCell(v) ? 'num' : ''}" title="${escapeHtml(v)}">${escapeHtml(v)}</td>`; }).join('');
+  tr.dataset.num = num;
+  return tr;
+}
+function csvAppendRows(from) {
+  const header = $('csvHeader').checked && csv.rows.length > 1, cols = csv.rows.reduce((m, r) => Math.max(m, r.length), 0);
+  const tbody = $('csvTable').querySelector('tbody'), frag = document.createDocumentFragment();
+  const to = Math.min(csv.view.length, from + CSV_PAGE);
+  for (let i = from; i < to; i++) frag.appendChild(csvRow(csv.view[i], i + (header ? 2 : 1), cols, false));
+  tbody.appendChild(frag); csv.shown = to;
+  $('csvMore').hidden = to >= csv.view.length;
+  $('csvFoot').textContent = `${to.toLocaleString()} of ${csv.view.length.toLocaleString()} rows${$('csvSearch').value.trim() ? ' match' : ''}${csv.sort >= 0 ? ` · sorted by ${colName(csv.sort)}` : ''}`;
+}
+function csvSelect(td) {
+  for (const old of $('csvTable').querySelectorAll('td.sel')) old.classList.remove('sel');
+  csv.sel = td;
+  if (!td) { $('csvRef').textContent = 'A1'; $('csvVal').textContent = ''; return; }
+  td.classList.add('sel');
+  const c = td.cellIndex - 1, rowNum = td.parentElement.dataset.num;
+  $('csvRef').textContent = `${colName(c)}${rowNum}`; $('csvVal').textContent = td.title;
+}
+$('csvTable').addEventListener('click', e => { const td = e.target.closest('td'); if (td) csvSelect(td); });
+$('csvDlg').addEventListener('keydown', e => {
+  if (!csv.sel || !/^Arrow/.test(e.key)) return;
+  e.preventDefault();
+  const tr = csv.sel.parentElement; let next = null;
+  if (e.key === 'ArrowRight') next = csv.sel.nextElementSibling;
+  else if (e.key === 'ArrowLeft') next = csv.sel.previousElementSibling?.tagName === 'TD' ? csv.sel.previousElementSibling : null;
+  else { const row = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling; next = row?.cells[csv.sel.cellIndex]; }
+  if (next && next.tagName === 'TD') { csvSelect(next); next.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+});
+$('csvMore').onclick = () => csvAppendRows(csv.shown);
+$('csvSearch').addEventListener('input', csvRender);
+$('csvHeader').addEventListener('input', csvRender);
+$('csvDelim').addEventListener('input', csvOpenText);
+$('csvClose').onclick = () => $('csvDlg').close();
+$('csvDownload').onclick = () => saveBlob(new Blob([csv.text], { type: 'text/csv' }), csv.name);
+$('csvDlg').addEventListener('close', () => { $('csvTable').querySelector('tbody').innerHTML = ''; csv.text = ''; csv.rows = []; csv.view = []; });
+function csvShow(name, text, size, path) {
+  csv.name = name; csv.text = text; csv.size = size; csv.path = path || '';
+  $('csvTitle').textContent = name; $('csvSearch').value = ''; $('csvDelim').value = 'auto'; $('csvHeader').checked = true;
+  const d = $('csvDlg'); if (!d.open) d.showModal();
+  csvOpenText();
+}
+async function openCsv(path, name, size) {
+  if (busy || !tp) return;
+  if (size > CSV_MAX) return alert(`${name} is ${fmtSize(size)}; the viewer opens files up to ${fmtSize(CSV_MAX)}. Download it instead.`);
+  setBusy(true);
+  try { const blob = await fetchBlob(path, size); csvShow(name, await blob.text(), size, path); }
+  catch (e) { log(`open ${name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => openCsv(path, name, size)); }
+  finally { setBusy(false); }
+}
+
+// ============================================================================
 // MJPEG player. A .mjpeg file is just JPEG frames back to back, so the page splits the
 // stream on the JPEG start/end markers as it arrives and draws frames on a canvas at the
 // chosen rate. Files on the card stream in while playing; converter results play from memory.
 // ============================================================================
 const isMjpeg = n => /\.(mjpeg|mjpg)$/i.test(n);
-const pl = { frames: [], carry: null, idx: 0, playing: false, userPaused: false, loading: false, abort: false, timer: null, rot: 0, drawing: false, pending: null };
+const pl = { frames: [], carry: null, idx: 0, playing: false, userPaused: false, loading: false, abort: false, raf: null, rot: 0, cache: new Map() };
 const plFps = () => +$('plFps').value || 24;
 const fmtClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 function plOpen(title, fps) {
-  plPause(); pl.frames = []; pl.carry = null; pl.idx = 0; pl.abort = false; pl.rot = 0; pl.userPaused = false; pl.pending = null;
+  plPause(); plClearCache(); pl.frames = []; pl.carry = null; pl.idx = 0; pl.abort = false; pl.rot = 0; pl.userPaused = false;
   $('plTitle').textContent = title; $('plStatus').textContent = '';
   if (fps) $('plFps').value = String(fps);
   $('plSeek').max = 0; $('plSeek').value = 0;
@@ -1251,22 +1556,33 @@ function plFeed(u8) {
   if (pl.frames.length === 1) plShow(0);                                            // poster frame
   if (!pl.playing && !pl.userPaused && pl.frames.length >= plFps() * 2) plPlay();   // 2 s buffered: go
 }
+// Decoded-frame cache: frames are decoded a few ahead of the one being shown, so drawing a frame is
+// just a blit and playback does not stutter on the decode of each JPEG.
+function plDecode(i) {
+  if (i < 0 || i >= pl.frames.length) return null;
+  let p = pl.cache.get(i);
+  if (!p) { p = createImageBitmap(new Blob([pl.frames[i]], { type: 'image/jpeg' })).catch(() => null); pl.cache.set(i, p); }
+  return p;
+}
+function plPrefetch(i) {
+  for (let k = i + 1; k <= i + 4; k++) plDecode(k);
+  for (const [k, p] of pl.cache) if (k < i - 1 || k > i + 8) { pl.cache.delete(k); p.then(b => b && b.close()); }
+}
+function plClearCache() { for (const p of pl.cache.values()) p.then(b => b && b.close()); pl.cache.clear(); }
+function plDraw(bmp) {
+  const c = $('plCanvas'), ctx = c.getContext('2d'), quarter = pl.rot % 180 !== 0;
+  const W = quarter ? bmp.height : bmp.width, H = quarter ? bmp.width : bmp.height;
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(pl.rot * Math.PI / 180); ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2); ctx.restore();
+}
+// Show one frame (seek, poster, rotate). Playback uses plPlay's own loop.
 async function plShow(i) {
   if (!pl.frames.length) return;
   i = Math.max(0, Math.min(i, pl.frames.length - 1)); pl.idx = i;
-  if (pl.drawing) { pl.pending = i; return; }
-  pl.drawing = true;
-  try {
-    const bmp = await createImageBitmap(new Blob([pl.frames[i]], { type: 'image/jpeg' }));
-    const c = $('plCanvas'), ctx = c.getContext('2d'), quarter = pl.rot % 180 !== 0;
-    const W = quarter ? bmp.height : bmp.width, H = quarter ? bmp.width : bmp.height;
-    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
-    ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(pl.rot * Math.PI / 180); ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2); ctx.restore();
-    bmp.close();
-  } catch { $('plStatus').textContent = `frame ${i} cannot be decoded`; }
-  pl.drawing = false;
-  $('plSeek').value = i; plUpdateTime();
-  if (pl.pending != null) { const p = pl.pending; pl.pending = null; plShow(p); }
+  const bmp = await plDecode(i);
+  if (pl.idx !== i) return;                                   // superseded by a later seek
+  if (bmp) plDraw(bmp); else $('plStatus').textContent = `frame ${i} cannot be decoded`;
+  $('plSeek').value = i; plUpdateTime(); plPrefetch(i);
 }
 function plUpdateTime() {
   const fps = plFps();
@@ -1275,27 +1591,31 @@ function plUpdateTime() {
 function plPlay() {
   if (!pl.frames.length || pl.playing) return;
   pl.playing = true; pl.userPaused = false; $('plPlay').textContent = 'Pause';
-  let next = performance.now();
-  const tick = () => {
+  let next = performance.now() + 1000 / plFps();
+  plPrefetch(pl.idx);
+  const step = async () => {
     if (!pl.playing) return;
-    const now = performance.now();
-    if (now >= next) {
-      next += 1000 / plFps();
-      if (now - next > 500) next = now;                     // resync after a stall
+    if (performance.now() >= next) {
       let i = pl.idx + 1;
       if (i >= pl.frames.length) {
-        if (pl.loading) { pl.timer = setTimeout(tick, 40); return; }   // wait for more frames
+        if (pl.loading) { pl.raf = requestAnimationFrame(step); return; }   // wait for more frames
         if (!$('plLoop').checked) { plPause(); return; }
         i = 0;
       }
-      plShow(i);
+      const bmp = await plDecode(i);                             // normally decoded already
+      if (!pl.playing) return;
+      pl.idx = i;
+      if (bmp) { plDraw(bmp); $('plSeek').value = i; plUpdateTime(); }
+      plPrefetch(i);
+      next += 1000 / plFps();
+      if (performance.now() - next > 250) next = performance.now();   // fell behind: resync instead of racing
     }
-    pl.timer = setTimeout(tick, Math.max(0, next - performance.now()));
+    pl.raf = requestAnimationFrame(step);
   };
-  tick();
+  pl.raf = requestAnimationFrame(step);
 }
 function plPause(byUser) {
-  pl.playing = false; clearTimeout(pl.timer); pl.timer = null;
+  pl.playing = false; cancelAnimationFrame(pl.raf); pl.raf = null;
   if (byUser) pl.userPaused = true;
   $('plPlay').textContent = 'Play';
 }
@@ -1305,7 +1625,7 @@ $('plFps').onchange = plUpdateTime;
 $('plRotate').onclick = () => { pl.rot = (pl.rot + 90) % 360; plShow(pl.idx); };
 $('plFull').onclick = () => $('plStage').requestFullscreen?.();
 $('plClose').onclick = () => $('playerDlg').close();
-$('playerDlg').addEventListener('close', () => { pl.abort = true; plPause(); pl.frames = []; pl.carry = null; });
+$('playerDlg').addEventListener('close', () => { pl.abort = true; plPause(); plClearCache(); pl.frames = []; pl.carry = null; });
 $('playerDlg').addEventListener('keydown', e => {
   if (e.key === ' ') { e.preventDefault(); pl.playing ? plPause(true) : plPlay(); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); plPause(true); plShow(pl.idx + 1); }
@@ -1327,7 +1647,7 @@ async function playFromCard(path, size) {
       log(`play ${name}: ${pl.frames.length} frames, ${fmtSize(size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
       if (!pl.playing && !pl.userPaused) plPlay();
     }
-  } catch (e) { if (!pl.abort) { $('plStatus').textContent = 'load failed: ' + e.message; log(`play ${name} failed: ${e.message}`); } }
+  } catch (e) { if (!pl.abort) { $('plStatus').textContent = 'load failed: ' + e.message; log(`play ${name} failed: ${e.message}`); if (isLinkError(e)) { $('playerDlg').close(); linkTrouble(e, () => playFromCard(path, size)); } } }
   finally { pl.loading = false; plUpdateTime(); setBusy(false); }
 }
 // Play a converter result straight from memory.
@@ -1392,6 +1712,7 @@ function convCommand(o) {
 }
 
 function setConvFile(file) {
+  cvStopSource(); $('cvScrub').value = 0;
   conv.file = file; conv.meta = null; conv.result = null; conv.previewKicked = false; $('cvResult').hidden = true;
   $('cvName').value = stemOf(file.name).replace(/[\\/:*?"<>|]/g, '_');
   $('cvInfo').textContent = `${file.name} · ${fmtSize(file.size)}`
@@ -1407,6 +1728,7 @@ $('cvVideo').addEventListener('loadedmetadata', () => {
   const v = $('cvVideo');
   conv.meta = { duration: v.duration, w: v.videoWidth, h: v.videoHeight };
   $('cvInfo').textContent += ` · ${v.videoWidth} × ${v.videoHeight} · ${v.duration.toFixed(1)} s`;
+  refreshConv();
 });
 $('cvVideo').addEventListener('loadeddata', seekPreview);        // first frame is decoded from here on
 $('cvVideo').addEventListener('error', () => { $('cvPreviewNote').textContent = 'This browser cannot decode the video for a preview. Conversion may still work.'; });
@@ -1452,11 +1774,29 @@ function refreshConv() {
   $('cvCancel').hidden = !conv.running;
   for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvStart', 'cvDur', 'cvName', 'cvPick']) $(id).disabled = conv.running;
   $('cvUpload').disabled = !tp || busy; $('cvPlayDev').disabled = !tp || busy;
+  $('cvPlaySrc').disabled = !conv.meta || conv.running; $('cvScrub').disabled = !conv.meta || conv.running;
   if (conv.meta) drawPreview();
 }
 for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvDur', 'cvName', 'cvW', 'cvH', 'cvSwap']) $(id).addEventListener('input', refreshConv);
 $('cvSize').addEventListener('input', () => { $('cvCustomWrap').hidden = $('cvSize').value !== 'custom'; });
 $('cvStart').addEventListener('input', () => { refreshConv(); seekPreview(); });
+// Play the source through the output transform (crop, rotation, fit) to check how the clip will look.
+let cvAnim = null;
+function cvDrawLoop() {
+  const v = $('cvVideo');
+  drawPreview();
+  $('cvScrub').value = Math.round(1000 * v.currentTime / (v.duration || 1));
+  if (!v.paused && !v.ended) cvAnim = requestAnimationFrame(cvDrawLoop);
+  else { cvAnim = null; $('cvPlaySrc').textContent = 'Play'; }
+}
+function cvStopSource() { const v = $('cvVideo'); if (!v.paused) v.pause(); cancelAnimationFrame(cvAnim); cvAnim = null; $('cvPlaySrc').textContent = 'Play'; }
+$('cvPlaySrc').onclick = async () => {
+  const v = $('cvVideo'); if (!conv.meta) return;
+  if (!v.paused) { cvStopSource(); return; }
+  try { await v.play(); $('cvPlaySrc').textContent = 'Pause'; cancelAnimationFrame(cvAnim); cvDrawLoop(); }
+  catch (e) { $('cvPreviewNote').textContent = 'Cannot play this video here: ' + e.message; }
+};
+$('cvScrub').oninput = e => { const v = $('cvVideo'); if (!conv.meta) return; cvStopSource(); v.currentTime = (v.duration || 0) * e.target.value / 1000; };
 const VIDEO_EXTS = $('cvFile').accept.split(',');
 // Chrome/Edge: native picker with a "Video files" filter and no "All files" entry, so only videos and folders show.
 // Elsewhere (or if the API refuses, e.g. on file:// pages) fall back to the <input accept> dialog.
@@ -1600,6 +1940,7 @@ async function convertVideo() {
   if (conv.running || !conv.file) return;
   const o = convOptions();
   if (!validName(o.name + '.mjpeg')) return alert('Invalid output name.');
+  cvStopSource();
   conv.running = true; conv.cancelled = false; conv.result = null; $('cvResult').hidden = true; $('cvLog').textContent = '';
   refreshConv();
   const t0 = performance.now(), inName = 'in' + (extOf(conv.file.name) || '.bin'), outName = 'out.mjpeg';
@@ -1667,7 +2008,7 @@ $('cvUpload').onclick = async () => {
     const videos = ents.filter(e => !e.d && /\.mjpeg$/i.test(e.n) && e.n !== r.name).length;
     if (videos >= PLAYER_MAX_FILES && !confirm(`${PLAYER_FOLDER} already holds ${videos} videos; the player indexes at most ${PLAYER_MAX_FILES}. Upload anyway?`)) return;
     await putFile(joinPath(PLAYER_FOLDER, r.name), r.blob);
-  } catch (e) { log(`upload ${r.name} failed: ${e.message}`); alert(`Upload of ${r.name} failed:\n${e.message}`); }
+  } catch (e) { log(`upload ${r.name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => $('cvUpload').onclick()); else alert(`Upload of ${r.name} failed:\n${e.message}`); }
   finally { setBusy(false); await navigate(PLAYER_FOLDER); await refreshInfo(); refreshConv(); }
 };
 refreshConv();
