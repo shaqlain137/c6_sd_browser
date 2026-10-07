@@ -114,11 +114,22 @@
   tr.entry[draggable] { user-select: none; }
   tr.entry td:first-child { border-top-left-radius: 10px; border-bottom-left-radius: 10px; }
   tr.entry td:last-child  { border-top-right-radius: 10px; border-bottom-right-radius: 10px; }
-  .name { font-size: 15px; letter-spacing: -0.016em; word-break: break-all; }
-  .actions { white-space: nowrap; text-align: right; }
-  .actions button { padding: 5px 11px; font-size: 12px; margin-left: 4px; opacity: 0; transition: opacity .12s; }
-  tr.entry:hover .actions button, tr.entry.selected .actions button, .actions button:focus-visible { opacity: 1; }
-  @media (hover: none) { .actions button { opacity: 1; } }
+  .name { font-size: 15px; letter-spacing: -0.016em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; width: 100%; }
+  th.namecol { width: 100%; }
+  .actions button.more { font-weight: 700; padding: 5px 9px; letter-spacing: 0; }
+  #rowMenu { position: absolute; z-index: 50; min-width: 170px; padding: 6px; border-radius: 12px; background: var(--card); box-shadow: 0 10px 30px rgba(0,0,0,.22), 0 0 0 1px var(--line); display: flex; flex-direction: column; }
+  #rowMenu button { background: transparent; color: var(--fg); text-align: left; border-radius: 8px; padding: 8px 12px; font-size: 14px; font-weight: 500; }
+  #rowMenu button:hover { background: var(--fill-2); }
+  #rowMenu button.danger { color: var(--err); }
+  /* Row actions overlay the right end of the row on hover or selection, so they take no width
+     from the name; the ⋯ menu button alone stays visible. Touch devices get everything in the menu. */
+  .actions { width: 0; padding: 0 !important; position: relative; white-space: nowrap; }
+  .act { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 4px; }
+  .act .inline { display: flex; gap: 4px; opacity: 0; transition: opacity .12s; padding: 6px 4px 6px 28px; border-radius: 10px; background: linear-gradient(90deg, transparent, var(--row-hover) 24px); }
+  tr.entry:hover .act .inline, tr.entry.selected .act .inline, .act .inline:focus-within { opacity: 1; }
+  tr.entry.selected .act .inline { background: linear-gradient(90deg, transparent, var(--sel) 24px); }
+  .actions button { padding: 5px 11px; font-size: 12px; margin: 0; }
+  td.when { padding-right: 54px; }
   #selbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; padding: 8px 8px 8px 18px; border-radius: 980px; background: var(--sel); font-size: 15px; }
   #selbar button { padding: 7px 14px; font-size: 13px; }
   #progressWrap { margin-bottom: 14px; }
@@ -253,7 +264,6 @@
     .card { padding: 20px; border-radius: 16px; } .wrap { padding: 0 16px 40px; } .nav .in { padding: 0 16px; }
     .hide-sm { display: none; }
     .conv-grid { grid-template-columns: 1fr; } .conv-preview { align-items: flex-start; }
-    .actions button { opacity: 1; }
   }
 </style>
 </head>
@@ -320,7 +330,7 @@
     </div>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th class="sortable" data-sort="name">Name</th><th class="num sortable" data-sort="size">Size</th><th class="sortable" data-sort="time">Modified</th><th></th></tr></thead>
+        <thead><tr><th class="chk"><input type="checkbox" id="selAll" title="Select all"></th><th class="sortable namecol" data-sort="name">Name</th><th class="num sortable" data-sort="size">Size</th><th class="sortable" data-sort="time">Modified</th><th></th></tr></thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
@@ -361,7 +371,7 @@
       <p class="lead small">
         Converts any video the browser can read (MP4, MOV, WebM, MKV…) into the raw Motion‑JPEG stream the player expects:
         the display's native size, baseline JPEG frames, no audio. Everything runs in this tab with ffmpeg.wasm, a one‑time 32 MB download;
-        nothing is sent to a server. Finished files can go straight into <b>/mjpeg</b> on the card.
+        nothing is sent to a server. Finished files can go straight into <b>/Render</b> on the card.
       </p>
       <div class="row">
         <button id="cvPick" class="secondary">Choose video</button>
@@ -402,7 +412,7 @@
             <select id="cvFit"><option value="crop">Crop to fill (keeps proportions, trims edges)</option><option value="pad">Letterbox (keeps everything, black bars)</option><option value="stretch">Stretch to fill</option></select>
           </label>
           <label class="field">Frame rate
-            <select id="cvFps"><option>10</option><option>12</option><option>15</option><option>20</option><option selected>24</option><option>30</option></select>
+            <select id="cvFps"><option>10</option><option>12</option><option selected>15</option><option>20</option><option>24</option><option>30</option></select>
           </label>
           <label class="field">JPEG quality <span class="muted">(‑q:v, lower is better and bigger)</span>
             <span class="row"><input id="cvQ" type="range" min="2" max="15" value="7" style="flex:1"><b id="cvQVal" style="width:2em;text-align:right;color:var(--fg)">7</b></span>
@@ -445,8 +455,7 @@
             <div class="row" style="margin-top:14px">
               <button id="cvPlay" class="secondary">Play here</button>
               <button id="cvDownload" class="secondary">Download .mjpeg</button>
-              <button id="cvUpload">Upload to /mjpeg on the card</button>
-              <button id="cvPlayDev" class="secondary">Play on C6</button>
+              <button id="cvUpload">Upload to /Render on the card</button>
             </div>
           </div>
           <div class="conv-preview"><div class="small muted">First frame of the result</div><img id="cvFirst" alt="first frame"></div>
@@ -528,8 +537,8 @@
       <button type="button" id="plPlay">Play</button>
       <input id="plSeek" type="range" min="0" max="0" value="0" step="1" aria-label="position">
       <span id="plTime" class="small muted tabular">0:00 / 0:00</span>
-      <label class="muted">fps <select id="plFps"><option>10</option><option>12</option><option>15</option><option>20</option><option selected>24</option><option>30</option></select></label>
-      <label class="muted"><input id="plLoop" type="checkbox" checked> Loop</label>
+      <label class="muted">fps <select id="plFps"><option>10</option><option>12</option><option selected>15</option><option>20</option><option>24</option><option>30</option></select></label>
+      <label class="muted"><input id="plLoop" type="checkbox"> Loop</label>
       <button type="button" class="secondary" id="plRotate" title="Rotate the picture 90°">Rotate</button>
       <button type="button" class="secondary" id="plFull">Fullscreen</button>
     </div>
@@ -629,7 +638,7 @@ class RequestTransport {
   mkdir(path)       { return this.json('K ' + path); }
   remove(path)      { return this.json('D ' + path, LONG_OP_MS); }
   move(src, dst)    { return this.json(`M ${src}\t${dst}`, LONG_OP_MS); }
-  play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play a clip on the board's LCD ("*" = whole /mjpeg folder)
+  play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play a clip on the board's LCD ("*" = everything in /Render and /mjpeg)
   stop()            { return this.json('S'); }
   control(action)   { return this.json('X ' + action); }         // pause | resume | toggle | next | prev | restart | loop all|one|off
   setClock()        { const d = new Date(); return this.json(`Z ${Math.floor(d.getTime() / 1000)}\t${-d.getTimezoneOffset()}`); }   // firmware 0.6.2+
@@ -914,8 +923,8 @@ function renderNow(dp) {
   card.hidden = false;
   const on = !!dp?.playing;
   $('npTitle').textContent = on ? baseName(dp.file) : 'Nothing playing';
-  $('npMeta').textContent = on ? `${dp.index + 1} of ${dp.count} · ${dp.fps} fps` : 'Pick a clip in the file list, or press ▶ to play the whole /mjpeg folder.';
-  $('npState').textContent = on ? `${dp.paused ? 'Paused' : 'Playing'} · ${fmtClock(dp.frames / (dp.fps || 24))} · repeat ${dp.loop}` : '';
+  $('npMeta').textContent = on ? `${dp.index + 1} of ${dp.count} · ${dp.fps} fps` : 'Pick a clip in the file list, or press ▶ to play everything in /Render and /mjpeg.';
+  $('npState').textContent = on ? `${dp.paused ? 'Paused' : 'Playing'} · ${fmtClock(dp.frames / (dp.fps || 15))} · repeat ${dp.loop}` : '';
   $('npPlay').textContent = on && !dp.paused ? '❚❚' : '▶';
   $('npLoop').textContent = dp?.loop === 'one' ? 'REPEAT 1' : dp?.loop === 'off' ? 'REPEAT OFF' : 'REPEAT';
   $('npLoop').classList.toggle('on', !!dp && dp.loop !== 'off');
@@ -947,7 +956,7 @@ $('npTest').onclick = async () => {
 // Playback on the board's own LCD (firmware 0.5.0+). fps is asked for when not known.
 async function devPlay(path, fps) {
   if (busy || !tp) return;
-  if (!fps) { const v = await askName('Frame rate for playback on the C6 (fps)', '24', 'Play'); if (v == null) return; fps = parseInt(v, 10); if (!(fps > 0)) return alert('Enter a number of frames per second.'); }
+  if (!fps) { const v = await askName('Frame rate for playback on the C6 (fps)', '15', 'Play'); if (v == null) return; fps = parseInt(v, 10); if (!(fps > 0)) return alert('Enter a number of frames per second.'); }
   runBatch([{ label: `play on C6 ${baseName(path)} at ${fps} fps`, run: () => tp.play(path, fps) }]);
 }
 function devStop() { if (busy || !tp) return; runBatch([{ label: 'stop playback on C6', run: () => tp.stop() }]); }
@@ -1036,22 +1045,29 @@ function renderRows(all) {
     const browserPlay = FEATURES.browserPlayback && tp?.kind !== 'BLE';   // streaming a clip over BLE is too slow to be useful
     const canSheet = !e.d && isCsv(e.n) && e.s <= CSV_MAX;
     tr.innerHTML = `<td class="chk"><input type="checkbox" aria-label="select"></td>
-                    <td class="name"><span class="ic ${e.d ? 'folder' : 'file'}"></span>${escapeHtml(e.n)}</td>
+                    <td class="name" title="${escapeHtml(e.n)}"><span class="ic ${e.d ? 'folder' : 'file'}"></span>${escapeHtml(e.n)}</td>
                     <td class="num">${e.d ? '' : fmtSize(e.s)}</td>
                     <td class="when">${fmtTime(e.t)}</td>
                     <td class="actions"></td>`;
     tr.querySelector('input').onclick = ev => { ev.stopPropagation(); toggleSelect(e.n, ev.shiftKey); };
-    const act = tr.querySelector('.actions');
-    const btn = (label, fn, cls = 'secondary') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; act.appendChild(b); };
+    const act = tr.querySelector('.actions'); act.innerHTML = '<div class="act"><div class="inline"></div></div>';
+    const wrap = act.firstChild, inline = wrap.firstChild, hoverOk = matchMedia('(hover: hover)').matches;
+    const mk = (label, fn, cls) => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = ev => { ev.stopPropagation(); fn(); }; return b; };
+    const primaries = [];
+    const btn = (label, fn, cls = 'secondary') => { primaries.push({ label, fn, cls }); };
     if (canPlay && FEATURES.devicePlayback) btn('Play on C6', () => devPlay(full), '');
     if (canPlay && browserPlay) btn(FEATURES.devicePlayback ? 'Play here' : 'Play', () => playFromCard(full, e.s), FEATURES.devicePlayback ? 'secondary' : '');
     if (canSheet) btn('Open', () => openCsv(full, e.n, e.s), '');
     if (!e.d) btn('Download', () => download(full, e.s));
-    if (canPreview && !canSheet && FEATURES.browserPlayback) btn('Preview', () => preview(full, e.n, e.s));
-    btn('Rename', () => renameEntry(e));
-    btn('Copy to…', () => moveCopy('copy', [e]));
-    btn('Move to…', () => moveCopy('move', [e]));
-    btn('Delete', () => deleteEntries([e]), 'secondary danger');
+    // Everything else lives in a per-row menu so the name keeps the width.
+    const more = [];
+    if (canPreview && !canSheet && FEATURES.browserPlayback) more.push({ label: 'Preview', fn: () => preview(full, e.n, e.s) });
+    more.push({ label: 'Rename', fn: () => renameEntry(e) }, { label: 'Copy to…', fn: () => moveCopy('copy', [e]) }, { label: 'Move to…', fn: () => moveCopy('move', [e]) }, { label: 'Delete', fn: () => deleteEntries([e]), danger: true });
+    if (hoverOk) for (const a of primaries) inline.appendChild(mk(a.label, a.fn, a.cls));
+    else more.unshift(...primaries.map(a => ({ label: a.label, fn: a.fn })));   // no hover: everything in the menu
+    const mb = mk('⋯', () => {}, 'secondary more'); mb.title = 'More actions'; mb.setAttribute('aria-label', 'More actions');
+    mb.onclick = ev => { ev.stopPropagation(); openRowMenu(mb, more); };
+    wrap.appendChild(mb);
     tr.onclick = ev => {
       if (ev.ctrlKey || ev.metaKey || ev.shiftKey) { toggleSelect(e.n, ev.shiftKey); return; }
       if (e.d) navigate(full);
@@ -1073,6 +1089,26 @@ function renderRows(all) {
   }
   updateSelection();
 }
+
+// ---------------- per-row "more" menu ----------------
+const rowMenu = document.createElement('div'); rowMenu.id = 'rowMenu'; rowMenu.hidden = true; document.body.appendChild(rowMenu);
+function closeRowMenu() { rowMenu.hidden = true; rowMenu.innerHTML = ''; }
+function openRowMenu(anchor, items) {
+  if (!rowMenu.hidden && rowMenu.anchor === anchor) { closeRowMenu(); return; }
+  rowMenu.innerHTML = ''; rowMenu.anchor = anchor;
+  for (const it of items) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = it.label; if (it.danger) b.classList.add('danger');
+    b.onclick = ev => { ev.stopPropagation(); closeRowMenu(); it.fn(); };
+    rowMenu.appendChild(b);
+  }
+  rowMenu.hidden = false;
+  const r = anchor.getBoundingClientRect(), w = rowMenu.offsetWidth;
+  rowMenu.style.left = `${Math.max(8, Math.min(window.innerWidth - w - 8, r.right - w)) + window.scrollX}px`;
+  rowMenu.style.top = `${r.bottom + 4 + window.scrollY}px`;
+}
+document.addEventListener('click', e => { if (!rowMenu.hidden && !rowMenu.contains(e.target)) closeRowMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRowMenu(); });
+window.addEventListener('scroll', closeRowMenu, { passive: true });
 
 // ---------------- selection ----------------
 const selEntries = () => entries.filter(e => selected.has(e.n));
@@ -1529,7 +1565,7 @@ async function openCsv(path, name, size) {
 // ============================================================================
 const isMjpeg = n => /\.(mjpeg|mjpg)$/i.test(n);
 const pl = { frames: [], carry: null, idx: 0, playing: false, userPaused: false, loading: false, abort: false, raf: null, rot: 0, cache: new Map() };
-const plFps = () => +$('plFps').value || 24;
+const plFps = () => +$('plFps').value || 15;
 const fmtClock = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
 function plOpen(title, fps) {
@@ -1636,7 +1672,7 @@ async function playFromCard(path, size) {
   if (busy || !tp) return;
   setBusy(true);
   const name = baseName(path), t0 = performance.now();
-  plOpen(name, 24); pl.loading = true;
+  plOpen(name, 15); pl.loading = true;
   try {
     await tp.readFile(path, size,
       got => { const s = (performance.now() - t0) / 1000; $('plStatus').textContent = `loading ${Math.round(100 * got / size)}% · ${fmtSize(got / Math.max(s, .1))}/s`; },
@@ -1661,14 +1697,14 @@ async function playBlob(name, blob, fps) {
 // ============================================================================
 // Video → MJPEG converter. ffmpeg.wasm is fetched from unpkg on first use.
 // Output matches thelastoutpostworkshop's ESP32-C6-LCD-1.47 video player:
-// raw concatenated baseline JPEGs, 172x320, read from /mjpeg on the card.
+// raw concatenated baseline JPEGs, 172x320. Converted clips are uploaded to /Render; the board also plays /mjpeg.
 // ============================================================================
 const FFMPEG_CDNS = [   // tried in order; pkg = @ffmpeg/ffmpeg UMD build, core = @ffmpeg/core ESM build
   { name: 'unpkg',    pkg: 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/',              core: 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/' },
   { name: 'jsDelivr', pkg: 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/', core: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/' },
 ];
-const PLAYER_FOLDER = '/mjpeg';
-const PLAYER_MAX_FILES = 20;
+const PLAYER_FOLDER = '/Render';
+const PLAYER_MAX_FILES = 999;
 // Per-frame read buffer of the player sketch: width * height * 2 / 5 (22016 B at 172x320).
 const maxFrameBytes = (w, h) => Math.round(w * h * 2 / 5);
 const conv = { file: null, meta: null, ffmpeg: null, running: false, cancelled: false, result: null };
@@ -1773,7 +1809,7 @@ function refreshConv() {
   $('cvConvert').disabled = !conv.file || conv.running;
   $('cvCancel').hidden = !conv.running;
   for (const id of ['cvSize', 'cvRotate', 'cvFit', 'cvFps', 'cvQ', 'cvStart', 'cvDur', 'cvName', 'cvPick']) $(id).disabled = conv.running;
-  $('cvUpload').disabled = !tp || busy; $('cvPlayDev').disabled = !tp || busy;
+  $('cvUpload').disabled = !tp || busy;
   $('cvPlaySrc').disabled = !conv.meta || conv.running; $('cvScrub').disabled = !conv.meta || conv.running;
   if (conv.meta) drawPreview();
 }
@@ -1991,9 +2027,7 @@ $('cvConvert').onclick = convertVideo;
 $('cvCancel').onclick = () => { if (!conv.running || !conv.ffmpeg) return; conv.cancelled = true; conv.ffmpeg.terminate(); conv.ffmpeg = null; };
 $('cvDownload').onclick = () => { if (conv.result) saveBlob(conv.result.blob, conv.result.name); };
 $('cvPlay').onclick = () => { if (conv.result) playBlob(conv.result.name, conv.result.blob, conv.result.opts.fps); };
-$('cvPlayDev').onclick = () => { if (conv.result) devPlay(joinPath(PLAYER_FOLDER, conv.result.name), conv.result.opts.fps); };   // after uploading
 $('cvPlay').hidden = !FEATURES.browserPlayback;
-$('cvPlayDev').hidden = !FEATURES.devicePlayback;
 $('cvCmdWrap').hidden = !FEATURES.ffmpegCommand;
 $('cvPlay').textContent = FEATURES.devicePlayback ? 'Play here' : 'Play';
 $('cvUpload').onclick = async () => {
