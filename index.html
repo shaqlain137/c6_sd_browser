@@ -204,6 +204,12 @@
     .wheel-center, .wheel-center:hover { background: #48484b; color: #ffffff; } .wheel-center:hover { background: #5a5a5e; }
   }
 
+  /* ---- toast (welcome on connect) ---- */
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px);
+           padding: 11px 18px; border-radius: 980px; background: var(--fg); color: var(--bg); font-size: 14px; letter-spacing: -0.01em;
+           box-shadow: 0 10px 30px rgba(0,0,0,.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toast-in .25s ease; }
+  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
   /* ---- CSV viewer (spreadsheet look) ---- */
   dialog.sheet { width: min(1200px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
   .sheet-wrap { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px; height: calc(100vh - 32px); max-height: 860px; }
@@ -457,6 +463,10 @@
               <button id="cvDownload" class="secondary">Download .mjpeg</button>
               <button id="cvUpload">Upload to /Render on the card</button>
             </div>
+            <div id="cvUpWrap" style="margin-top:10px" hidden>
+              <div id="cvUpText" class="small muted" style="margin-bottom:6px"></div>
+              <progress id="cvUpProgress" max="100" value="0"></progress>
+            </div>
           </div>
           <div class="conv-preview"><div class="small muted">First frame of the result</div><img id="cvFirst" alt="first frame"></div>
         </div>
@@ -494,6 +504,8 @@
     <div class="sheet-foot"><span id="csvFoot" class="small muted"></span><button type="button" class="secondary" id="csvMore" style="padding:5px 12px;font-size:12px" hidden>Show more rows</button></div>
   </div>
 </dialog>
+
+<div id="toast" class="toast" role="status" hidden></div>
 
 <!-- Connection trouble: shown when the link stops answering -->
 <dialog id="linkDlg">
@@ -632,9 +644,10 @@ class RequestTransport {
     });
   }
   async json(cmd, timeoutMs) { const u8 = await this.request(cmd, null, timeoutMs); return u8.length ? JSON.parse(dec.decode(u8)) : {}; }
+  async resync() {}                                     // USB overrides this: drop stale input after a failed upload
 
   info()            { return this.json('I'); }
-  list(path)        { return this.json('L ' + path); }
+  list(path)        { return this.json('L ' + path, 60000); }      // a folder of hundreds of files takes the device a while
   mkdir(path)       { return this.json('K ' + path); }
   remove(path)      { return this.json('D ' + path, LONG_OP_MS); }
   move(src, dst)    { return this.json(`M ${src}\t${dst}`, LONG_OP_MS); }
@@ -780,6 +793,8 @@ class UsbTransport extends RequestTransport {
     await this._open();
   }
   _send(cmd) { this._parse(); return this.writer.write(enc.encode(cmd + '\n')); }
+  // After a failed upload a data piece may still be in flight; the device discards input for 1.5 s, and so do we.
+  async resync() { this.pending = null; await new Promise(r => setTimeout(r, 1700)); this.buf = new Uint8Array(0); }
   _sendRaw(u8) { return this.writer.write(u8); }
   _afterArm() { this._parse(); }
 
@@ -864,10 +879,26 @@ async function attach(transport) {
   $('btnDisc').disabled = false;
   $('browser').hidden = false;
   await refreshInfo();
+  welcome();
   try { await tp.setClock(); } catch {}          // older firmware answers "unknown command"; harmless
   if (tp.kind === 'BLE') log('Tip: for big files, plug in USB-C and use "Connect USB" — it is 10–50× faster than BLE.');
   await navigate('/');
 }
+// ---------------- welcome on connect ----------------
+let lastInfo = null, toastTimer = null;
+function toast(msg, ms = 6000) {
+  const t = $('toast'); t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
+}
+// Firmware reports its build time as "Oct 12 2026 23:20:08" (the C compiler's __DATE__ __TIME__).
+function fmtBuilt(b) { const d = b ? new Date(b.replace(/\s+/g, ' ')) : null; return d && !isNaN(d) ? d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : (b || 'unknown'); }
+function welcome() {
+  if (!tp) return;
+  const i = lastInfo || {};
+  const msg = `Connected on the media portal over ${tp.kind} · firmware ${i.fw || '?'}${i.board ? ` (${i.board})` : ''} · built ${fmtBuilt(i.built)}`;
+  toast(msg); log(msg);
+}
+
 // ---------------- connection trouble: never leave the user staring at a stuck page ----------------
 const isLinkError = e => /timeout|disconnect|in flight|GATT|NetworkError|lost|not open|closed|port|device/i.test(e?.message || '');
 let linkRetry = null;
@@ -894,7 +925,7 @@ async function reconnectLink() {
 }
 async function refreshInfo() {
   try {
-    const i = await tp.info();
+    const i = await tp.info(); lastInfo = i;
     const sd = i.sd?.ok ? `SD ${fmtSize(i.sd.used)} / ${fmtSize(i.sd.total)}` : 'SD not mounted';
     let link = '';
     if (tp.kind === 'BLE' && i.ble) {
@@ -1415,16 +1446,19 @@ async function uploadFiles(files) {
   if (linkFail) linkTrouble(linkFail.e, () => uploadFiles(linkFail.rest));
 }
 // Upload one blob to a full path with progress; throws on failure.
-async function putFile(path, blob) {
+async function putFile(path, blob, onProgress) {
   const name = baseName(path), t0 = performance.now();
-  showProgress(`${tp.kind}: uploading ${name} 0 / ${fmtSize(blob.size)}`, 0);
+  const report = sent => {
+    const s = (performance.now() - t0) / 1000;
+    showProgress(`${tp.kind}: uploading ${name} ${fmtSize(sent)} / ${fmtSize(blob.size)} · ${fmtSize(sent / Math.max(s, .1))}/s`, blob.size ? sent / blob.size : 1);
+    onProgress?.(sent, blob.size);
+  };
+  report(0);
   try {
-    await tp.writeFile(path, blob, sent => {
-      const s = (performance.now() - t0) / 1000;
-      showProgress(`${tp.kind}: uploading ${name} ${fmtSize(sent)} / ${fmtSize(blob.size)} · ${fmtSize(sent / Math.max(s, .1))}/s`, blob.size ? sent / blob.size : 1);
-    });
+    await tp.writeFile(path, blob, report);
     log(`upload ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
-  } finally { showProgress(null); }
+  } catch (e) { await tp.resync?.(); throw e; }
+  finally { showProgress(null); }
 }
 $('btnUpload').onclick = () => $('fileInput').click();
 $('fileInput').onchange = e => { const f = [...e.target.files]; e.target.value = ''; uploadFiles(f); };
@@ -2041,8 +2075,14 @@ $('cvUpload').onclick = async () => {
     if (ents.some(e => e.n === r.name) && !confirm(`"${r.name}" already exists in ${PLAYER_FOLDER}. Overwrite?`)) return;
     const videos = ents.filter(e => !e.d && /\.mjpeg$/i.test(e.n) && e.n !== r.name).length;
     if (videos >= PLAYER_MAX_FILES && !confirm(`${PLAYER_FOLDER} already holds ${videos} videos; the player indexes at most ${PLAYER_MAX_FILES}. Upload anyway?`)) return;
-    await putFile(joinPath(PLAYER_FOLDER, r.name), r.blob);
-  } catch (e) { log(`upload ${r.name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => $('cvUpload').onclick()); else alert(`Upload of ${r.name} failed:\n${e.message}`); }
+    const t0 = performance.now(); $('cvUpWrap').hidden = false; $('cvUpProgress').value = 0; $('cvUpText').textContent = 'Uploading…';
+    await putFile(joinPath(PLAYER_FOLDER, r.name), r.blob, (sent, total) => {
+      const s = (performance.now() - t0) / 1000, pct = total ? Math.round(100 * sent / total) : 100;
+      $('cvUpProgress').value = pct;
+      $('cvUpText').textContent = `Uploading ${r.name}: ${fmtSize(sent)} of ${fmtSize(total)} (${pct}%) · ${fmtSize(sent / Math.max(s, .1))}/s`;
+    });
+    $('cvUpProgress').value = 100; $('cvUpText').textContent = `Uploaded ${r.name} to ${PLAYER_FOLDER} · ${fmtSize(r.blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  } catch (e) { $('cvUpText').textContent = `Upload failed: ${e.message}`; log(`upload ${r.name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => $('cvUpload').onclick()); else alert(`Upload of ${r.name} failed:\n${e.message}`); }
   finally { setBusy(false); await navigate(PLAYER_FOLDER); await refreshInfo(); refreshConv(); }
 };
 refreshConv();
