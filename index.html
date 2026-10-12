@@ -204,12 +204,6 @@
     .wheel-center, .wheel-center:hover { background: #48484b; color: #ffffff; } .wheel-center:hover { background: #5a5a5e; }
   }
 
-  /* ---- toast (welcome on connect) ---- */
-  .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 60; max-width: calc(100vw - 32px);
-           padding: 11px 18px; border-radius: 980px; background: var(--fg); color: var(--bg); font-size: 14px; letter-spacing: -0.01em;
-           box-shadow: 0 10px 30px rgba(0,0,0,.25); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; animation: toast-in .25s ease; }
-  @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
   /* ---- CSV viewer (spreadsheet look) ---- */
   dialog.sheet { width: min(1200px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
   .sheet-wrap { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px 16px; height: calc(100vh - 32px); max-height: 860px; }
@@ -504,8 +498,6 @@
     <div class="sheet-foot"><span id="csvFoot" class="small muted"></span><button type="button" class="secondary" id="csvMore" style="padding:5px 12px;font-size:12px" hidden>Show more rows</button></div>
   </div>
 </dialog>
-
-<div id="toast" class="toast" role="status" hidden></div>
 
 <!-- Connection trouble: shown when the link stops answering -->
 <dialog id="linkDlg">
@@ -885,18 +877,14 @@ async function attach(transport) {
   await navigate('/');
 }
 // ---------------- welcome on connect ----------------
-let lastInfo = null, toastTimer = null;
-function toast(msg, ms = 6000) {
-  const t = $('toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms);
-}
+// The board shows the welcome on its own LCD (firmware 0.6.6+); the page only notes it in the log.
+let lastInfo = null;
 // Firmware reports its build time as "Oct 12 2026 23:20:08" (the C compiler's __DATE__ __TIME__).
 function fmtBuilt(b) { const d = b ? new Date(b.replace(/\s+/g, ' ')) : null; return d && !isNaN(d) ? d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : (b || 'unknown'); }
 function welcome() {
   if (!tp) return;
   const i = lastInfo || {};
-  const msg = `Connected on the media portal over ${tp.kind} · firmware ${i.fw || '?'}${i.board ? ` (${i.board})` : ''} · built ${fmtBuilt(i.built)}`;
-  toast(msg); log(msg);
+  log(`Connected on the media portal over ${tp.kind} · firmware ${i.fw || '?'}${i.board ? ` (${i.board})` : ''} · built ${fmtBuilt(i.built)}`);
 }
 
 // ---------------- connection trouble: never leave the user staring at a stuck page ----------------
