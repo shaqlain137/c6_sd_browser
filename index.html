@@ -76,11 +76,11 @@
   th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
   th.sortable:hover { color: var(--fg); }
   td.when { font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  input[type=text], input[type=number], input[type=datetime-local], select {
+  input[type=text], input[type=password], input[type=number], input[type=datetime-local], select {
     font: inherit; font-size: 15px; letter-spacing: -0.016em; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px;
     background: var(--card); color: var(--fg); width: 100%; transition: border-color .15s, box-shadow .15s;
   }
-  input[type=text]:focus, input[type=number]:focus, select:focus { border-color: var(--accent); }
+  input[type=text]:focus, input[type=password]:focus, input[type=number]:focus, input[type=datetime-local]:focus, select:focus { border-color: var(--accent); }
   input[type=checkbox] { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent); }
   input[type=range] { accent-color: var(--accent); }
   progress { appearance: none; -webkit-appearance: none; width: 100%; height: 6px; border: 0; border-radius: 3px; background: var(--fill); overflow: hidden; }
@@ -185,6 +185,8 @@
   .ipod-screen { width: 100%; min-height: 132px; border-radius: 12px; background: #0b0b0d; color: #f5f5f7; padding: 16px 18px; display: flex; flex-direction: column; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 2px #2c2c2e; }
   .np-title { font-size: 15px; font-weight: 600; letter-spacing: -.02em; word-break: break-all; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .np-meta, .np-state { font-size: 12px; color: #86868b; font-variant-numeric: tabular-nums; }
+  .np-folder { margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+  .np-folder select { font-size: 12px; padding: 3px 24px 3px 8px; border-radius: 8px; }
   .wheel { position: relative; width: 214px; height: 214px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #e4e4e9, #cdcdd3); box-shadow: inset 0 2px 6px rgba(255,255,255,.7), 0 6px 18px rgba(0,0,0,.12); }
   .wheel-btn { position: absolute; background: transparent; color: #6e6e73; font-size: 12px; font-weight: 700; letter-spacing: .08em; padding: 10px 14px; border-radius: 12px; transition: color .15s, background .15s; }
   .wheel-btn:hover { background: rgba(0,0,0,.05); color: var(--fg); }
@@ -203,6 +205,16 @@
     .wheel-btn { color: #a1a1a6; } .wheel-btn:hover { background: rgba(255,255,255,.06); }
     .wheel-center, .wheel-center:hover { background: #48484b; color: #ffffff; } .wheel-center:hover { background: #5a5a5e; }
   }
+
+  /* ---- register device ---- */
+  dialog.reg { width: min(620px, calc(100vw - 32px)); }
+  .reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 980px; background: var(--fill); color: var(--fg); font-size: 14px; cursor: pointer; user-select: none; border: 1px solid transparent; }
+  .chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .chip:has(input:checked) { background: var(--accent); color: var(--accent-fg); }
+  .chip:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--ring); }
+  @media (max-width: 560px) { .reg-grid { grid-template-columns: 1fr; } }
 
   /* ---- CSV viewer (spreadsheet look) ---- */
   dialog.sheet { width: min(1200px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
@@ -271,7 +283,10 @@
 <header class="nav">
   <div class="in">
     <span class="brand">ESP32‑C6 SD Browser</span>
-    <span id="status" class="pill">disconnected</span>
+    <span class="row" style="gap:10px">
+      <button id="btnRegister" style="padding:6px 14px;font-size:13px" hidden>Register device</button>
+      <span id="status" class="pill">disconnected</span>
+    </span>
   </div>
 </header>
 
@@ -354,6 +369,9 @@
         <div id="npTitle" class="np-title">Nothing playing</div>
         <div id="npMeta" class="np-meta"></div>
         <div id="npState" class="np-state"></div>
+        <div id="npFolderRow" class="np-meta np-folder">▶ plays from
+          <select id="npFolder" title="Folder the ▶ button plays from while nothing is playing"><option value="/mjpeg">/mjpeg</option><option value="/Render">/Render</option></select>
+        </div>
       </div>
       <div class="wheel">
         <button type="button" id="npLoop" class="wheel-btn top" title="Repeat: all, one, off">REPEAT</button>
@@ -497,6 +515,61 @@
     <div class="sheet-grid" id="csvGrid"><table id="csvTable"><thead></thead><tbody></tbody></table></div>
     <div class="sheet-foot"><span id="csvFoot" class="small muted"></span><button type="button" class="secondary" id="csvMore" style="padding:5px 12px;font-size:12px" hidden>Show more rows</button></div>
   </div>
+</dialog>
+
+<!-- Register device: sign in, then the owner profile form -->
+<dialog id="loginDlg">
+  <form method="dialog">
+    <h2>Sign in to register this device.</h2>
+    <label class="field">User name<input id="loginUser" type="text" autocomplete="username" spellcheck="false"></label>
+    <label class="field">Password<input id="loginPass" type="password" autocomplete="current-password"></label>
+    <div id="loginHint" class="hint"></div>
+    <footer>
+      <button type="button" class="secondary" id="loginCancel">Cancel</button>
+      <button type="submit" value="ok" id="loginOk">Sign in</button>
+    </footer>
+  </form>
+</dialog>
+<dialog id="regDlg" class="reg">
+  <form id="regForm" method="dialog">
+    <h2>Register this device.</h2>
+    <p class="small muted" style="margin:0">The profile is stored in the device's own flash memory (not on the card), sent to the server, and remembered in this browser.</p>
+    <div class="reg-grid">
+      <label class="field">First name<input id="regFirst" type="text" autocomplete="given-name"></label>
+      <label class="field">Last name<input id="regLast" type="text" autocomplete="family-name"></label>
+    </div>
+    <div class="reg-grid">
+      <label class="field">Organization<input id="regOrg" type="text" autocomplete="off"><select id="regOrgSel" hidden></select></label>
+      <label class="field">Organization ID<input id="regOrgId" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
+    </div>
+    <div class="field">Interest
+      <div class="chips" id="regInterest">
+        <label class="chip"><input type="radio" name="regInterestOpt" value="Art"> Art</label>
+        <label class="chip"><input type="radio" name="regInterestOpt" value="Engineering"> Engineering</label>
+        <label class="chip"><input type="radio" name="regInterestOpt" value="Biz"> Biz</label>
+        <label class="chip"><input type="radio" name="regInterestOpt" value="Fun"> Fun</label>
+      </div>
+    </div>
+    <label class="field">Privacy setting
+      <select id="regPrivacy">
+        <option value="all">All access</option>
+        <option value="company">Only my company</option>
+        <option value="looking">Only Looking For</option>
+        <option value="none">No access</option>
+      </select>
+    </label>
+    <div class="reg-grid">
+      <label class="field">Looking for<input id="regLooking" type="text" autocomplete="off"><select id="regLookingSel" hidden></select></label>
+      <label class="field">Looking for ID<input id="regLookingId" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
+    </div>
+    <p id="regNode" class="small muted" style="margin:0"></p>
+    <div id="regHint" class="hint"></div>
+    <footer>
+      <button type="button" class="secondary" id="regCancel">Close</button>
+      <button type="button" class="secondary" id="regReset">Reset data</button>
+      <button type="submit" value="ok" id="regSubmit">Submit</button>
+    </footer>
+  </form>
 </dialog>
 
 <!-- Connection trouble: shown when the link stops answering -->
@@ -643,11 +716,13 @@ class RequestTransport {
   mkdir(path)       { return this.json('K ' + path); }
   remove(path)      { return this.json('D ' + path, LONG_OP_MS); }
   move(src, dst)    { return this.json(`M ${src}\t${dst}`, LONG_OP_MS); }
-  play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play a clip on the board's LCD ("*" = everything in /Render and /mjpeg)
+  play(path, fps)   { return this.json(`P ${path}\t${fps}`); }     // play one clip on the board's LCD ("*" = the first clip in /mjpeg; "P *\tfps\tall" would run through that folder)
   stop()            { return this.json('S'); }
   control(action)   { return this.json('X ' + action); }         // pause | resume | toggle | next | prev | restart | loop all|one|off
   setClock()        { const d = new Date(); return this.json(`Z ${Math.floor(d.getTime() / 1000)}\t${-d.getTimezoneOffset()}`); }   // firmware 0.6.2+
   screenTest()      { return this.json('T'); }                   // colour bars + orientation line on the LCD
+  profileGet()      { return this.json('G'); }                   // owner profile from the board's flash ({} when none), firmware 0.6.7+
+  profileSet(json)  { return this.json('J ' + json); }           // store it there ("" clears)
   copy(src, dst)    { return this.json(`C ${src}\t${dst}`, LONG_OP_MS); }
 
   // Read a whole file in windows. With onChunk the data is streamed to the caller instead of
@@ -865,10 +940,27 @@ function capabilities() {
   $('caps').innerHTML = notes.map(n => `<div>${n}</div>`).join('');
 }
 
+// One note row in place of the listing: while the card is being read, or when it could not be.
+function rowsNote(text, retry) {
+  const tb = $('rows'); tb.innerHTML = '';
+  const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = 5; td.className = 'muted'; td.textContent = text;
+  if (retry) { const b = document.createElement('button'); b.className = 'secondary'; b.textContent = 'Retry'; b.style.marginLeft = '12px'; b.onclick = retry; td.append(b); }
+  tr.append(td); tb.appendChild(tr);
+  $('fltCount').textContent = '';
+}
+// Forget everything shown for the previous device: another board has a different card.
+function clearBrowser() {
+  cwd = '/'; entries = []; viewRows = []; lastInfo = null; selected.clear(); anchor = null; updateSelection();
+  $('devinfo').textContent = ''; $('preview').hidden = true; $('nowCard').hidden = true; $('btnStopDev').hidden = true;
+  renderCrumbs(); rowsNote('');
+}
+let firstList = false;                       // true until the first listing of a newly attached device succeeds
 async function attach(transport) {
   tp = transport;
   setStatus(`${tp.kind}: ${tp.label}`, 'ok');
   $('btnDisc').disabled = false;
+  clearBrowser(); rowsNote('Reading the card…'); firstList = true;
+  $('btnRegister').hidden = false;               // registering needs the board: its node id and its flash
   $('browser').hidden = false;
   await refreshInfo();
   welcome();
@@ -876,6 +968,269 @@ async function attach(transport) {
   if (tp.kind === 'BLE') log('Tip: for big files, plug in USB-C and use "Connect USB" — it is 10–50× faster than BLE.');
   await navigate('/');
 }
+// ============================================================================
+// Register device: a static sign-in, then the owner profile. The profile is written to the card as
+// /profile.json (when connected) and kept in this browser so the form comes back filled in.
+// ============================================================================
+const REGISTER_LOGIN = { user: 'admin', pass: 'proximity' };   // static for now
+const PROFILE_KEY = 'pp.profile';   // browser copy; the device keeps its own in flash (G / J commands)
+// Submit also registers the owner with the server as a multipart POST /api/user (API doc at
+// hackmd.io/@yyss8/B1K2hgZs0): first_name, last_name, node_id, mac_id, privacy_settings and the relation
+// lists companies, categories, looking_fors (ids from the lookups below; the legacy single company_id /
+// category_id go along for older readers). A node_id the server already has turns the call into an update.
+// node_id is the board's base MAC as one integer (aa:bb:cc:dd:ee:ff -> 0xaabbccddeeff), reported by
+// firmware 0.6.7+ in the info reply.
+// Where the API is reached from. Opened from a file, the page talks to ap.scfe.me directly, which
+// works only once that server sends CORS headers. Served over http(s), it uses /api on its own
+// origin: web/serve.py (or hosting the page on ap.scfe.me itself) forwards that to the real API
+// with nothing for the browser to object to. ?api=https://host/api overrides either.
+const API_BASE = new URLSearchParams(location.search).get('api')
+  || (/^https?:$/.test(location.protocol) ? location.origin + '/api' : 'https://ap.scfe.me/api');
+const REGISTER_API = {
+  base: API_BASE, key: '6049821890b838d2036237222d0d94d2',
+  url: API_BASE + '/user',                                  // POST: create or update the user for a node_id
+  lists: '/u/organization-interest',                        // GET: enabled companies + categories for the pickers
+  names: '/u/name',                                         // GET: user_id, first_name, last_name, node_id of every user
+  users: '/users',                                          // GET ?node_id= / ?user_id=: one full user record (null if none)
+  categories: { Art: 1, Engineering: 2, Biz: 3, Fun: 4 },  // fallback ids while the server's category list is unavailable
+  privacy: { all: 0, company: 1, looking: 2, none: 3 },
+};
+// GET one of the lookup endpoints. The API answers {"status":"success","data":…}; a missing CORS
+// header makes the browser hide the reply, which lands here as a TypeError like any network error.
+async function apiGet(path, params = {}, timeoutMs = 10000) {
+  const u = new URL(REGISTER_API.base + path); u.searchParams.set('api_key', REGISTER_API.key);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), timeoutMs);
+  try {
+    const res = await fetch(u, { signal: ac.signal });
+    const j = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(`HTTP ${res.status}${j?.error || j?.message ? ': ' + (j.error || j.message) : ''}`);
+    if (j?.status && j.status !== 'success') throw new Error(j.message || j.error || 'request failed');
+    return j?.data ?? null;
+  } finally { clearTimeout(t); }
+}
+// Lookups for the form, fetched once per page load: companies and categories replace the typed ids,
+// the user list feeds the "Looking for" picker. Each falls back to the static form when unavailable.
+const regLists = { companies: null, categories: null, users: null, tried: false };
+async function regLookups() {
+  if (regLists.tried) return; regLists.tried = true;
+  const [li, us] = await Promise.allSettled([apiGet(REGISTER_API.lists), apiGet(REGISTER_API.names)]);
+  if (li.status === 'fulfilled' && li.value) {
+    regLists.companies = (li.value.companies || []).filter(c => c.company_name);
+    regLists.categories = (li.value.categories || []).filter(c => c.category_name);
+    if (regLists.categories.length) regSetCategories(regLists.categories);
+    if (regLists.companies.length) regSetPicker('regOrg', 'Choose an organization…', regLists.companies.map(c => [c.company_id, c.company_name]));
+    log(`register: ${regLists.companies.length} organizations, ${regLists.categories.length} interests from the server`);
+  } else log('register: organization/interest list unavailable (' + (li.reason?.message || 'no data') + '), using the built-in choices');
+  if (us.status === 'fulfilled' && Array.isArray(us.value)) {
+    regLists.users = us.value.filter(u => u.user_id != null && (u.first_name || u.last_name));
+    if (regLists.users.length) regSetPicker('regLooking', 'Nobody', regLists.users.map(u => [u.user_id, regUserLabel(u)]));
+    log(`register: ${regLists.users.length} users from the server for the Looking for picker`);
+  } else log('register: user list unavailable (' + (us.reason?.message || 'no data') + '), type the Looking for ID by hand');
+}
+// A server list turns a typed field into a dropdown: the text box is hidden, the id box follows the
+// choice and becomes read-only. (A datalist would filter by the current text, so once a name was
+// picked, opening it again showed only that name.) Without a list the typed fields stay as they are.
+const regPickers = { regOrg: 'regOrgId', regLooking: 'regLookingId' };
+function regSetPicker(textId, noneLabel, items) {
+  const sel = $(textId + 'Sel'), idBox = $(regPickers[textId]);
+  sel.replaceChildren(Object.assign(document.createElement('option'), { value: '', textContent: noneLabel }),
+    ...items.map(([id, label]) => Object.assign(document.createElement('option'), { value: String(id), textContent: label })));
+  sel.hidden = false; $(textId).hidden = true; idBox.readOnly = true;
+  regSyncPicker(textId);
+}
+// Make the dropdown show the id currently in the id box (an id the list does not know shows as "none").
+function regSyncPicker(textId) {
+  const sel = $(textId + 'Sel'); if (sel.hidden) return;
+  sel.value = $(regPickers[textId]).value;
+  if (sel.selectedIndex < 0) sel.value = '';
+  if (sel.value) $(textId).value = sel.options[sel.selectedIndex].textContent;
+}
+for (const textId of Object.keys(regPickers)) $(textId + 'Sel').addEventListener('change', () => {
+  const sel = $(textId + 'Sel');
+  $(regPickers[textId]).value = sel.value; $(textId).value = sel.value ? sel.options[sel.selectedIndex].textContent : '';
+});
+const regUserLabel = u => `${[u.first_name, u.last_name].filter(Boolean).join(' ')} (#${u.user_id})`;
+// Rebuild the Interest chips from the server's categories (one choice, like the app); ids ride on data-id.
+function regSetCategories(cats) {
+  const cur = $('regInterest').querySelector('input:checked')?.value;
+  $('regInterest').replaceChildren(...cats.map(c => {
+    const l = document.createElement('label'); l.className = 'chip';
+    const i = document.createElement('input'); i.type = 'radio'; i.name = 'regInterestOpt'; i.value = c.category_name; i.dataset.id = c.category_id;
+    i.checked = c.category_name === cur;
+    l.append(i, ' ' + c.category_name); return l;
+  }));
+}
+function regCategoryId(name) {
+  const chip = [...$('regInterest').querySelectorAll('input')].find(i => i.value === name);
+  return chip?.dataset.id != null ? +chip.dataset.id : (REGISTER_API.categories[name] ?? 0);
+}
+// Who the server already has for this board, if anyone.
+async function regNodeLookup(nodeId) {
+  const u = await apiGet(REGISTER_API.users, { node_id: nodeId });
+  return u && (u.user_id != null) ? u : null;
+}
+const regFields = { firstName: 'regFirst', lastName: 'regLast', organization: 'regOrg', organizationId: 'regOrgId', privacy: 'regPrivacy', lookingFor: 'regLooking', lookingForId: 'regLookingId' };
+function regRead() {
+  const p = {};
+  for (const [k, id] of Object.entries(regFields)) p[k] = $(id).value.trim();
+  p.interests = [...$('regInterest').querySelectorAll('input:checked')].map(i => i.value);
+  return p;
+}
+function regFill(p) {
+  for (const [k, id] of Object.entries(regFields)) $(id).value = p?.[k] ?? (k === 'privacy' ? 'all' : '');
+  for (const i of $('regInterest').querySelectorAll('input')) i.checked = !!p?.interests?.includes(i.value);
+  for (const textId of Object.keys(regPickers)) regSyncPicker(textId);
+  $('regHint').textContent = ''; $('regHint').classList.remove('err');
+}
+// The node id from an info reply: the decimal node_id when the firmware sends it, else derived from the MAC text.
+function nodeIdOf(info) {
+  if (!info) return null;
+  if (Number.isFinite(+info.node_id) && +info.node_id > 0) return +info.node_id;
+  const hex = String(info.mac || '').replace(/[^0-9a-f]/gi, '');
+  return hex.length === 12 ? parseInt(hex, 16) : null;
+}
+function regApiFields(p, nodeId, mac) {
+  const fd = new FormData();
+  fd.append('first_name', p.firstName); fd.append('last_name', p.lastName);
+  fd.append('node_id', String(nodeId));
+  if (mac) fd.append('mac_id', mac);
+  fd.append('privacy_settings', String(REGISTER_API.privacy[p.privacy] ?? 0));
+  const company = parseInt(p.organizationId, 10) || 0, category = regCategoryId(p.interests[0]), lookingFor = parseInt(p.lookingForId, 10) || 0;
+  // Relation lists (comma-separated ids). An empty list is still sent, so clearing a choice clears it on the server too.
+  fd.append('companies', company ? String(company) : '');
+  fd.append('categories', category ? String(category) : '');
+  fd.append('looking_fors', lookingFor ? String(lookingFor) : '');
+  fd.append('company_id', String(company)); fd.append('category_id', String(category));   // legacy single ids, still read back by GET /users
+  return fd;
+}
+// POST the profile to the server. Resolves to a message for the hint; throws on a server-side error.
+// The API answers {"status":"success"|"warning"|"error","message":…,"data":{"user_id",…}} with HTTP 200
+// even for errors. It sends no CORS headers, so a browser can deliver the request but may be refused
+// the reply: that case is reported as "sent, unconfirmed".
+async function regSendApi(p, nodeId, mac) {
+  const url = `${REGISTER_API.url}?api_key=${encodeURIComponent(REGISTER_API.key)}`;
+  let res;
+  try { res = await fetch(url, { method: 'POST', body: regApiFields(p, nodeId, mac) }); }
+  catch (e) {
+    if (navigator.onLine === false) throw new Error('no network connection');
+    log('register: server reply not readable (' + e.message + ')');
+    return 'sent to the server (its reply could not be read: the API allows no cross-origin access; open the page through web/serve.py to fix this)';
+  }
+  const text = await res.text(); let j = null; try { j = JSON.parse(text); } catch {}
+  if (!res.ok) throw new Error(`server replied HTTP ${res.status}${j?.message ? ': ' + j.message : ''}`);
+  if (j?.status === 'error') throw new Error(j.message || 'server rejected the profile');
+  log('register: server reply ' + text.slice(0, 200));
+  const who = j?.data?.user_id != null ? ` as user #${j.data.user_id}` : '';
+  const updated = /updated/i.test(j?.message || '');
+  return `${updated ? 'updated' : 'registered'} on the server${who}` + (j?.status === 'warning' ? ` (server warning: ${j.message})` : '');
+}
+function regStored() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); } catch { return null; } }
+function openLogin() {
+  const d = $('loginDlg');
+  if (sessionStorage.getItem('pp.signedIn') === '1') { openRegister(); return; }
+  $('loginUser').value = ''; $('loginPass').value = ''; $('loginHint').textContent = ''; $('loginHint').classList.remove('err');
+  d.returnValue = ''; d.showModal(); $('loginUser').focus();
+}
+$('btnRegister').onclick = openLogin;
+$('loginCancel').onclick = () => $('loginDlg').close('cancel');
+$('loginDlg').querySelector('form').addEventListener('submit', e => {
+  if ($('loginUser').value.trim() !== REGISTER_LOGIN.user || $('loginPass').value !== REGISTER_LOGIN.pass) {
+    e.preventDefault(); $('loginHint').textContent = 'Wrong user name or password.'; $('loginHint').classList.add('err'); $('loginPass').select(); return;
+  }
+  sessionStorage.setItem('pp.signedIn', '1');
+});
+$('loginDlg').addEventListener('close', () => { if ($('loginDlg').returnValue === 'ok') openRegister(); });
+function regNodeLine() {
+  const live = tp ? nodeIdOf(lastInfo) : null, stored = regStored()?.device;
+  const id = live ?? stored?.nodeId, mac = live ? lastInfo.mac : stored?.mac;
+  $('regNode').textContent = id ? `Device node id ${id}${mac ? ` (MAC ${mac})` : ''}${live ? '' : ' · from the last registration; connect the device to refresh'}`
+    : tp ? 'This firmware does not report its MAC; update to 0.6.7 or newer to register with the server.'
+         : 'Connect the device to get its node id for the server registration.';
+}
+async function openRegister() {
+  regFill(regStored()); regNodeLine();
+  const d = $('regDlg'); d.returnValue = ''; if (!d.open) d.showModal();
+  const lookups = regLookups();                      // server lists, in the background
+  // A profile already in the device's flash wins over the browser's copy.
+  let have = !!$('regFirst').value;
+  if (tp && !busy) {
+    setBusy(true);
+    try {
+      const p = await tp.profileGet();
+      if (p && p.firstName) { regFill(p); have = true; $('regHint').textContent = 'Loaded the profile stored on the device.'; }
+    } catch (e) { log('profile read failed: ' + e.message + (/unknown command/.test(e.message) ? ' (firmware 0.6.7+ keeps the profile in flash)' : '')); }
+    finally { setBusy(false); }
+  }
+  // Then ask the server who this board belongs to. A registration found there is the record of
+  // truth and is loaded into the form over whatever the device or this browser remembered.
+  const nodeId = (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId;
+  if (nodeId) {
+    try {
+      const u = await regNodeLookup(nodeId); await lookups;
+      if (u) {
+        const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+        $('regNode').textContent += ` · registered on the server to ${name} (user #${u.user_id})`;
+        if (d.open) { regFill(regFromServer(u, regRead())); $('regHint').textContent = `Loaded ${name}'s registration from the server${have ? ' (newer than the copy on the device)' : ''}.`; }
+      }
+    } catch (e) { log('register: server lookup for this node failed (' + e.message + ')'); }
+  }
+}
+// A server user record as form values. Ids come back as names through the lookups; where the lookups
+// are unavailable the local text is kept when its id still matches, otherwise the id stands alone.
+function regFromServer(u, cur) {
+  const first = v => Array.isArray(v) ? v[0] : v, num = v => (v == null || v === '' || +v === 0) ? '' : String(+v);
+  const si = u.seek_interest || {};
+  const companyId = num(u.company_id) || num(first(si.companies)), categoryId = num(u.category_id) || num(first(si.interests));
+  const lookingId = num(u.looking_for_node) || num(first(si.users)) || num(first(u.looking_for));
+  const org = regLists.companies?.find(c => String(c.company_id) === companyId);
+  const cat = regLists.categories?.find(c => String(c.category_id) === categoryId);
+  const catFallback = Object.keys(REGISTER_API.categories).find(k => String(REGISTER_API.categories[k]) === categoryId);
+  const person = regLists.users?.find(x => String(x.user_id) === lookingId);
+  return {
+    firstName: u.first_name || '', lastName: u.last_name || '',
+    organizationId: companyId,
+    organization: org?.company_name ?? (companyId && String(cur?.organizationId) === companyId ? cur.organization : ''),
+    interests: cat ? [cat.category_name] : regLists.categories ? [] : catFallback ? [catFallback] : (categoryId && regCategoryId(cur?.interests?.[0]) === +categoryId ? cur.interests : []),
+    privacy: Object.keys(REGISTER_API.privacy).find(k => REGISTER_API.privacy[k] === +u.privacy_settings) || 'all',
+    lookingForId: lookingId,
+    lookingFor: u.looking_for_person || (person ? regUserLabel(person) : (lookingId && String(cur?.lookingForId) === lookingId ? cur.lookingFor : '')),
+  };
+}
+$('regCancel').onclick = () => $('regDlg').close('cancel');
+$('regReset').onclick = () => { regFill(null); localStorage.removeItem(PROFILE_KEY); $('regHint').textContent = 'Cleared. Submit to save the empty form, or close to keep the card as it is.'; };
+$('regForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const p = regRead();
+  if (!p.firstName || !p.lastName) { $('regHint').textContent = 'First name and last name are required.'; $('regHint').classList.add('err'); return; }
+  $('regHint').classList.remove('err');
+  p.registeredAt = new Date().toISOString();
+  // The node id comes from the connected board; without one, the last registration's id still serves.
+  const nodeId = (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId || null;
+  if (tp && lastInfo) p.device = { name: lastInfo.name, fw: lastInfo.fw, board: lastInfo.board, mac: lastInfo.mac, nodeId };
+  else if (nodeId) p.device = regStored().device;
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  if (tp && busy) { $('regHint').textContent = 'The device is busy; try again in a moment.'; return; }
+  $('regSubmit').disabled = true;
+  const done = [], failed = [];
+  try {
+    if (tp) {
+      setBusy(true); $('regHint').textContent = 'Storing the profile in the device’s flash…';
+      try { const r = await tp.profileSet(JSON.stringify(p)); done.push('stored on the device'); log(`register: profile stored in flash for ${p.firstName} ${p.lastName} (${r.bytes ?? '?'} bytes)`); }
+      catch (err) { failed.push('Could not store on the device: ' + err.message); log('register: flash write failed: ' + err.message); if (isLinkError(err)) linkTrouble(err, () => $('regSubmit').click()); }
+      finally { setBusy(false); }
+    }
+    if (nodeId) {
+      $('regHint').textContent = 'Sending the profile to the server…';
+      try { done.push(await regSendApi(p, nodeId, p.device?.mac)); }
+      catch (err) { failed.push('Server registration failed: ' + err.message); log('register: server call failed: ' + err.message); }
+    } else failed.push('Not sent to the server: connect the device first, its node id is needed');
+    const who = `${p.firstName} ${p.lastName}`;
+    $('regHint').textContent = failed.length ? `${done.length ? who + ': ' + done.join(', ') + '. ' : ''}${failed.join('. ')}.` : `Registered: ${who}. Profile ${done.join(' and ')}.`;
+    $('regHint').classList.toggle('err', failed.length > 0);
+  } finally { $('regSubmit').disabled = false; regNodeLine(); }
+});
+
 // ---------------- welcome on connect ----------------
 // The board shows the welcome on its own LCD (firmware 0.6.6+); the page only notes it in the log.
 let lastInfo = null;
@@ -942,7 +1297,8 @@ function renderNow(dp) {
   card.hidden = false;
   const on = !!dp?.playing;
   $('npTitle').textContent = on ? baseName(dp.file) : 'Nothing playing';
-  $('npMeta').textContent = on ? `${dp.index + 1} of ${dp.count} · ${dp.fps} fps` : 'Pick a clip in the file list, or press ▶ to play everything in /Render and /mjpeg.';
+  $('npMeta').textContent = on ? `${dp.index + 1} of ${dp.count} · ${dp.fps} fps` : 'Pick a clip in the file list, or press ▶ for the first clip of the folder below. Repeat all plays the whole folder.';
+  $('npFolderRow').hidden = on;
   $('npState').textContent = on ? `${dp.paused ? 'Paused' : 'Playing'} · ${fmtClock(dp.frames / (dp.fps || 15))} · repeat ${dp.loop}` : '';
   $('npPlay').textContent = on && !dp.paused ? '❚❚' : '▶';
   $('npLoop').textContent = dp?.loop === 'one' ? 'REPEAT 1' : dp?.loop === 'off' ? 'REPEAT OFF' : 'REPEAT';
@@ -960,7 +1316,10 @@ async function devCtl(action) {
   catch (e) { log(`C6 ${action} failed: ${e.message}`); alert(`${action} failed:\n${e.message}`); }
   finally { setBusy(false); renderNow(nowState); }
 }
-$('npPlay').onclick = () => nowState?.playing ? devCtl('toggle') : devPlay('*');
+// ▶ while idle plays the first clip of the chosen folder (/mjpeg by default); the choice is remembered.
+try { const f = localStorage.getItem('pp.npFolder'); if (f) $('npFolder').value = f; } catch {}
+$('npFolder').onchange = () => { try { localStorage.setItem('pp.npFolder', $('npFolder').value); } catch {} };
+$('npPlay').onclick = () => nowState?.playing ? devCtl('toggle') : devPlay($('npFolder').value || '/mjpeg');
 $('npPrev').onclick = () => devCtl('prev');
 $('npNext').onclick = () => devCtl('next');
 $('npStop').onclick = () => devStop();
@@ -983,9 +1342,9 @@ $('btnStopDev').onclick = devStop;
 async function detach() {
   const t = tp; tp = null;
   for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
-  setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true;
-  $('nowCard').hidden = true; clearInterval(nowPoll); nowPoll = null; nowState = null;
-  selected.clear(); entries = []; updateSelection();
+  setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true; $('btnRegister').hidden = true;
+  clearInterval(nowPoll); nowPoll = null; nowState = null;
+  clearBrowser();                                 // the next device must not show this one's files
   if (t) await t.disconnect();
 }
 
@@ -996,10 +1355,15 @@ async function navigate(path) {
     const t0 = performance.now();
     const res = await tp.list(path);
     cwd = res.path || path; entries = res.entries || [];
-    selected.clear(); anchor = null;
+    selected.clear(); anchor = null; firstList = false;
     renderCrumbs(); renderRows(entries);
     log(`list ${cwd}: ${entries.length} entries in ${Math.round(performance.now() - t0)} ms${res.truncated ? ' (truncated)' : ''}`);
-  } catch (e) { log(`list ${path} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => navigate(path)); }
+  } catch (e) {
+    log(`list ${path} failed: ${e.message}`);
+    // Nothing of this device has been shown yet: say so in the table rather than leave it blank or stale.
+    if (firstList) rowsNote(`Could not read the card: ${e.message}`, () => navigate(path));
+    if (isLinkError(e)) linkTrouble(e, () => navigate(path));
+  }
   finally { setBusy(false); }
 }
 const parentOf = p => p.slice(0, p.lastIndexOf('/')) || '/';
