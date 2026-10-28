@@ -985,7 +985,10 @@ const PROFILE_KEY = 'pp.profile';   // browser copy; the device keeps its own in
 // origin: web/serve.py (or hosting the page on ap.scfe.me itself) forwards that to the real API
 // with nothing for the browser to object to. ?api=https://host/api overrides either.
 const API_BASE = new URLSearchParams(location.search).get('api')
-  || (/^https?:$/.test(location.protocol) ? location.origin + '/api' : 'https://ap.scfe.me/api');
+  // Same-origin only where an /api proxy really exists (web/serve.py on localhost, or the API's own host);
+  // everywhere else (GitHub Pages, file://) talk to the API directly — it allows those origins by CORS.
+  || (/^https?:$/.test(location.protocol) && /^(localhost|127\.0\.0\.1|ap\.scfe\.me)$/.test(location.hostname)
+      ? location.origin + '/api' : 'https://ap.scfe.me/api');
 const REGISTER_API = {
   base: API_BASE, key: '6049821890b838d2036237222d0d94d2',
   url: API_BASE + '/user',                                  // POST: create or update the user for a node_id
