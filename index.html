@@ -489,6 +489,17 @@
     .card { padding: 20px; border-radius: 20px; } .wrap { padding: 0 16px 40px; } .nav { padding: 8px 10px 0; } .nav .in { padding: 0 8px 0 16px; height: 48px; }
     .hide-sm { display: none; }
     .conv-grid { grid-template-columns: 1fr; } .conv-preview { align-items: flex-start; }
+    /* File list on a phone: the date column goes (it is in the row menu's title anyway), so the name gets the width. */
+    td.when, th[data-sort=time] { display: none; }
+    th, td { padding-left: 6px; padding-right: 6px; }
+    td.num, th.num { font-size: 13px; padding-right: 50px; }   /* room for the row's ⋯ button, which overlays the right end of the row */
+    /* Nav capsule: brand truncates, the button and the pill stay on one line and shrink. */
+    .nav .in { gap: 8px; }
+    .brand { flex: 1 1 auto; min-width: 0; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .nav .in .row { flex: 0 1 auto; flex-wrap: nowrap; gap: 6px; min-width: 0; }
+    #btnRegister { padding: 5px 10px !important; font-size: 12px !important; white-space: nowrap; }
+    .pill { display: inline-block; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; padding: 4px 9px; line-height: 1.4; }
+    .pill::before { display: inline-block; margin-right: 6px; vertical-align: 0; }
   }
 </style>
 </head>
