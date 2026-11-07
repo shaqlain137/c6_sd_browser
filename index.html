@@ -159,12 +159,14 @@
   th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
   th.sortable:hover { color: var(--fg); }
   td.when { font-size: 13px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  input[type=text], input[type=password], input[type=number], input[type=datetime-local], select {
+  textarea { resize: vertical; min-height: 76px; line-height: 1.4; }
+  input[type=text], input[type=password], input[type=number], input[type=datetime-local], select, textarea {
     font: inherit; font-size: 15px; letter-spacing: -0.016em; padding: 10px 14px; border: 0; border-radius: 14px;
     background: var(--glass-2); color: var(--fg); width: 100%; transition: background .15s, box-shadow .15s;
     box-shadow: var(--ctl-rim), 0 0 0 1px var(--edge);
   }
-  input[type=text]:focus, input[type=password]:focus, input[type=number]:focus, input[type=datetime-local]:focus, select:focus { background: var(--glass-3); }
+  input[type=text]:focus, input[type=password]:focus, input[type=number]:focus, input[type=datetime-local]:focus, select:focus, textarea:focus { background: var(--glass-3); }
+  textarea:focus-visible { outline: none; box-shadow: var(--ctl-rim), 0 0 0 1px var(--accent), 0 0 0 4px var(--ring); }
   input[type=checkbox] { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent); }
   input[type=range] { accent-color: var(--accent); }
   progress { appearance: none; -webkit-appearance: none; width: 100%; height: 6px; border: 0; border-radius: 3px; background: var(--fill); overflow: hidden; }
@@ -786,6 +788,10 @@
       <label class="field">Looking for<input id="regLooking" type="text" autocomplete="off"><select id="regLookingSel" hidden></select></label>
       <label class="field">Looking for ID<input id="regLookingId" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></label>
     </div>
+    <label class="field">Device text
+      <textarea id="regText" rows="3" maxlength="1500" autocomplete="off" placeholder="Sent to the server after the registration, as this device's text file (my_text)."></textarea>
+      <span id="regTextNote" class="tiny muted"></span>
+    </label>
     <p id="regNode" class="small muted" style="margin:0"></p>
     <div id="regHint" class="hint"></div>
     <footer>
@@ -1300,7 +1306,7 @@ async function regNodeLookup(nodeId) {
   const u = await apiGet(REGISTER_API.users, { node_id: nodeId });
   return u && (u.user_id != null) ? u : null;
 }
-const regFields = { firstName: 'regFirst', lastName: 'regLast', organization: 'regOrg', organizationId: 'regOrgId', privacy: 'regPrivacy', lookingFor: 'regLooking', lookingForId: 'regLookingId' };
+const regFields = { firstName: 'regFirst', lastName: 'regLast', organization: 'regOrg', organizationId: 'regOrgId', privacy: 'regPrivacy', lookingFor: 'regLooking', lookingForId: 'regLookingId', text: 'regText' };
 function regRead() {
   const p = {};
   for (const [k, id] of Object.entries(regFields)) p[k] = $(id).value.trim();
@@ -1320,7 +1326,38 @@ function nodeIdOf(info) {
   const hex = String(info.mac || '').replace(/[^0-9a-f]/gi, '');
   return hex.length === 12 ? parseInt(hex, 16) : null;
 }
-function regApiFields(p, nodeId, mac) {
+// The node id to register under: the connected board's, else the one from the last registration.
+const regNodeId = () => (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId || null;
+// The device's text goes to the server in a second call once the registration itself has gone through,
+// so the record exists before the server stores the text file under /files/txt/. The box is prefilled
+// with my_text_XXXX, XXXX being the last four digits of the node id; whatever is typed over it is sent
+// instead. The text stays out of the profile stored on the board (its command line is 2048 bytes).
+const regTextFor = nodeId => 'my_text_' + String(nodeId).slice(-4);
+const regTextDefault = () => { const id = regNodeId(); return id ? regTextFor(id) : ''; };
+// The server's user record answers my_text with where it stored the file (e.g. /files/txt/usr308_txt.txt),
+// not with the text. Such a path is never the text: it must not land in the box, or Submit would store
+// the path itself as the device's text.
+const regIsFileRef = t => /^(https?:\/\/\S+|\/\S*)$/i.test(String(t || '').trim()) && /\/files\/|\.txt$/i.test(String(t));
+function regTextPrefill() { if (!$('regText').value.trim() || regIsFileRef($('regText').value)) $('regText').value = regTextDefault(); }
+// Read the stored text back into the box. The page's own origin is tried first (web/serve.py forwards
+// /files/), then the API host, which only works where it allows this site; failing that the box keeps
+// what it has. Only an untouched box is filled.
+async function regTextFromServer(ref) {
+  if (!regIsFileRef(ref)) return;
+  const before = $('regText').value, path = /^https?:/i.test(ref) ? new URL(ref).pathname : ref;
+  const tries = [...(/^https?:$/.test(location.protocol) ? [location.origin + path] : []), new URL(API_BASE).origin + path];
+  for (const url of tries) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok || !/text\/plain/i.test(r.headers.get('Content-Type') || '')) continue;
+      const t = (await r.text()).trim();
+      if (t && $('regDlg').open && $('regText').value === before) { $('regText').value = t; log(`register: device text read from ${path}`); }
+      return;
+    } catch {}
+  }
+  log(`register: the stored device text (${path}) could not be read from this page; the box keeps the local text`);
+}
+function regApiFields(p, nodeId, mac, text) {
   const fd = new FormData();
   fd.append('first_name', p.firstName); fd.append('last_name', p.lastName);
   fd.append('node_id', String(nodeId));
@@ -1332,25 +1369,30 @@ function regApiFields(p, nodeId, mac) {
   fd.append('categories', category ? String(category) : '');
   fd.append('looking_fors', lookingFor ? String(lookingFor) : '');
   fd.append('company_id', String(company)); fd.append('category_id', String(category));   // legacy single ids, still read back by GET /users
+  if (text) fd.append('my_text', text);   // only on the follow-up call: the server stores it as a text file under /files/txt/
   return fd;
 }
 // POST the profile to the server. Resolves to a message for the hint; throws on a server-side error.
 // The API answers {"status":"success"|"warning"|"error","message":…,"data":{"user_id",…}} with HTTP 200
 // even for errors. It sends no CORS headers, so a browser can deliver the request but may be refused
 // the reply: that case is reported as "sent, unconfirmed".
-async function regSendApi(p, nodeId, mac) {
+// With a text it is the follow-up call that stores the device's text file; the record's own warnings
+// were reported by the registration call, so that call only logs them.
+const regTextLabel = t => /^my_text_\d{1,4}$/.test(t) ? t : `“${t.length > 40 ? t.slice(0, 40) + '…' : t}”`;
+async function regSendApi(p, nodeId, mac, text) {
   const url = `${REGISTER_API.url}?api_key=${encodeURIComponent(REGISTER_API.key)}`;
   let res;
-  try { res = await fetch(url, { method: 'POST', body: regApiFields(p, nodeId, mac) }); }
+  try { res = await fetch(url, { method: 'POST', body: regApiFields(p, nodeId, mac, text) }); }
   catch (e) {
     if (navigator.onLine === false) throw new Error('no network connection');
     log('register: server reply not readable (' + e.message + ')');
-    return 'sent to the server (its reply could not be read: the API allows no cross-origin access; open the page through web/serve.py to fix this)';
+    return `${text ? `text ${regTextLabel(text)} ` : ''}sent to the server (its reply could not be read: the API allows no cross-origin access; open the page through web/serve.py to fix this)`;
   }
-  const text = await res.text(); let j = null; try { j = JSON.parse(text); } catch {}
+  const body = await res.text(); let j = null; try { j = JSON.parse(body); } catch {}
   if (!res.ok) throw new Error(`server replied HTTP ${res.status}${j?.message ? ': ' + j.message : ''}`);
   if (j?.status === 'error') throw new Error(j.message || 'server rejected the profile');
-  log('register: server reply ' + text.slice(0, 200));
+  log(`register: server reply${text ? ' to the text call' : ''} ` + body.slice(0, 200));
+  if (text) return `text ${regTextLabel(text)} stored on the server`;
   const who = j?.data?.user_id != null ? ` as user #${j.data.user_id}` : '';
   const updated = /updated/i.test(j?.message || '');
   return `${updated ? 'updated' : 'registered'} on the server${who}` + (j?.status === 'warning' ? ` (server warning: ${j.message})` : '');
@@ -1377,9 +1419,10 @@ function regNodeLine() {
   $('regNode').textContent = id ? `Device node id ${id}${mac ? ` (MAC ${mac})` : ''}${live ? '' : ' · from the last registration; connect the device to refresh'}`
     : tp ? 'This firmware does not report its MAC; update to 0.6.7 or newer to register with the server.'
          : 'Connect the device to get its node id for the server registration.';
+  $('regTextNote').textContent = id ? `Sent to the server after the registration; an empty box sends ${regTextFor(id)}.` : '';
 }
 async function openRegister() {
-  regFill(regStored()); regNodeLine();
+  regFill(regStored()); regTextPrefill(); regNodeLine();
   const d = $('regDlg'); d.returnValue = ''; if (!d.open) d.showModal();
   const lookups = regLookups();                      // server lists, in the background
   // A profile already in the device's flash wins over the browser's copy.
@@ -1388,20 +1431,20 @@ async function openRegister() {
     setBusy(true);
     try {
       const p = await tp.profileGet();
-      if (p && p.firstName) { regFill(p); have = true; $('regHint').textContent = 'Loaded the profile stored on the device.'; }
+      if (p && p.firstName) { regFill({ ...p, text: regRead().text }); have = true; $('regHint').textContent = 'Loaded the profile stored on the device.'; }
     } catch (e) { log('profile read failed: ' + e.message + (/unknown command/.test(e.message) ? ' (firmware 0.6.7+ keeps the profile in flash)' : '')); }
     finally { setBusy(false); }
   }
   // Then ask the server who this board belongs to. A registration found there is the record of
   // truth and is loaded into the form over whatever the device or this browser remembered.
-  const nodeId = (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId;
+  const nodeId = regNodeId();
   if (nodeId) {
     try {
       const u = await regNodeLookup(nodeId); await lookups;
       if (u) {
         const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
         $('regNode').textContent += ` · registered on the server to ${name} (user #${u.user_id})`;
-        if (d.open) { regFill(regFromServer(u, regRead())); $('regHint').textContent = `Loaded ${name}'s registration from the server${have ? ' (newer than the copy on the device)' : ''}.`; }
+        if (d.open) { regFill(regFromServer(u, regRead())); regTextPrefill(); regTextFromServer(u.my_text); $('regHint').textContent = `Loaded ${name}'s registration from the server${have ? ' (newer than the copy on the device)' : ''}.`; }
       }
     } catch (e) { log('register: server lookup for this node failed (' + e.message + ')'); }
   }
@@ -1425,10 +1468,12 @@ function regFromServer(u, cur) {
     privacy: Object.keys(REGISTER_API.privacy).find(k => REGISTER_API.privacy[k] === +u.privacy_settings) || 'all',
     lookingForId: lookingId,
     lookingFor: u.looking_for_person || (person ? regUserLabel(person) : (lookingId && String(cur?.lookingForId) === lookingId ? cur.lookingFor : '')),
+    // The record may carry the text itself or only a link to the stored file; a link is no use in the box, so the local text stays then.
+    text: (typeof u.my_text === 'string' && u.my_text.trim() && !regIsFileRef(u.my_text)) ? u.my_text : (cur?.text ?? ''),
   };
 }
 $('regCancel').onclick = () => $('regDlg').close('cancel');
-$('regReset').onclick = () => { regFill(null); localStorage.removeItem(PROFILE_KEY); $('regHint').textContent = 'Cleared. Submit to save the empty form, or close to keep the card as it is.'; };
+$('regReset').onclick = () => { regFill(null); regTextPrefill(); localStorage.removeItem(PROFILE_KEY); $('regHint').textContent = 'Cleared. Submit to save the empty form, or close to keep the card as it is.'; };
 $('regForm').addEventListener('submit', async e => {
   e.preventDefault();
   const p = regRead();
@@ -1436,7 +1481,7 @@ $('regForm').addEventListener('submit', async e => {
   $('regHint').classList.remove('err');
   p.registeredAt = new Date().toISOString();
   // The node id comes from the connected board; without one, the last registration's id still serves.
-  const nodeId = (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId || null;
+  const nodeId = regNodeId();
   if (tp && lastInfo) p.device = { name: lastInfo.name, fw: lastInfo.fw, board: lastInfo.board, mac: lastInfo.mac, nodeId };
   else if (nodeId) p.device = regStored().device;
   localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
@@ -1446,14 +1491,19 @@ $('regForm').addEventListener('submit', async e => {
   try {
     if (tp) {
       setBusy(true); $('regHint').textContent = 'Storing the profile in the device’s flash…';
-      try { const r = await tp.profileSet(JSON.stringify(p)); done.push('stored on the device'); log(`register: profile stored in flash for ${p.firstName} ${p.lastName} (${r.bytes ?? '?'} bytes)`); }
+      try { const r = await tp.profileSet(JSON.stringify({ ...p, text: undefined })); done.push('stored on the device'); log(`register: profile stored in flash for ${p.firstName} ${p.lastName} (${r.bytes ?? '?'} bytes)`); }
       catch (err) { failed.push('Could not store on the device: ' + err.message); log('register: flash write failed: ' + err.message); if (isLinkError(err)) linkTrouble(err, () => $('regSubmit').click()); }
       finally { setBusy(false); }
     }
     if (nodeId) {
       $('regHint').textContent = 'Sending the profile to the server…';
-      try { done.push(await regSendApi(p, nodeId, p.device?.mac)); }
-      catch (err) { failed.push('Server registration failed: ' + err.message); log('register: server call failed: ' + err.message); }
+      try {
+        done.push(await regSendApi(p, nodeId, p.device?.mac));
+        $('regHint').textContent = 'Sending the device text to the server…';
+        const text = (p.text && !regIsFileRef(p.text)) ? p.text : regTextFor(nodeId);
+        try { done.push(await regSendApi(p, nodeId, p.device?.mac, text)); }
+        catch (err) { failed.push(`Text not stored on the server: ` + err.message); log('register: text call failed: ' + err.message); }
+      } catch (err) { failed.push('Server registration failed: ' + err.message); log('register: server call failed: ' + err.message); }
     } else failed.push('Not sent to the server: connect the device first, its node id is needed');
     const who = `${p.firstName} ${p.lastName}`;
     $('regHint').textContent = failed.length ? `${done.length ? who + ': ' + done.join(', ') + '. ' : ''}${failed.join('. ')}.` : `Registered: ${who}. Profile ${done.join(' and ')}.`;
