@@ -1351,6 +1351,7 @@ async function regTextFromServer(ref) {
       const r = await fetch(url, { cache: 'no-store' });
       if (!r.ok || !/text\/plain/i.test(r.headers.get('Content-Type') || '')) continue;
       const t = (await r.text()).trim();
+      if (t) regEnsureCardText(regNodeId(), t);      // the server has it; the card gets its copy if it has none
       if (t && $('regDlg').open && $('regText').value === before) { $('regText').value = t; log(`register: device text read from ${path}`); }
       return;
     } catch {}
@@ -1396,6 +1397,47 @@ async function regSendApi(p, nodeId, mac, text) {
   const who = j?.data?.user_id != null ? ` as user #${j.data.user_id}` : '';
   const updated = /updated/i.test(j?.message || '');
   return `${updated ? 'updated' : 'registered'} on the server${who}` + (j?.status === 'warning' ? ` (server warning: ${j.message})` : '');
+}
+// Write the device text to the card as /received_text_files/received_text.XXXX.txt, XXXX being the last four
+// digits of the node id, the same four digits the server's my_text_XXXX uses. An existing file is overwritten.
+const TEXT_FOLDER = '/received_text_files';
+const textFileName = nodeId => `received_text.${String(nodeId).slice(-4)}.txt`;
+// Write one small file on the card, creating its folder first. With onlyIfMissing an existing file is left alone
+// and false is returned; otherwise the file is written (overwriting) and true is returned.
+async function cardWrite(folder, name, content, type, onlyIfMissing) {
+  if (busy) throw new Error('the device is busy, try again in a moment');
+  setBusy(true);
+  const path = joinPath(folder, name);
+  try {
+    let entries = [];
+    try { entries = (await tp.list(folder)).entries || []; }
+    catch { if (folder !== '/') { await tp.mkdir(folder); log(`mkdir ${folder}: ok`); } }
+    if (onlyIfMissing && entries.some(e => !e.d && e.n === name)) return false;
+    await tp.writeFile(path, new Blob([content], { type }));
+    return true;
+  } catch (e) { await tp.resync?.(); throw e; }
+  finally { setBusy(false); if (cwd === '/' || cwd === folder) navigate(cwd); }
+}
+async function regSaveTextToCard(nodeId, text, onlyIfMissing) {
+  const path = joinPath(TEXT_FOLDER, textFileName(nodeId));
+  if (!await cardWrite(TEXT_FOLDER, textFileName(nodeId), text, 'text/plain', onlyIfMissing)) return null;
+  log(`register: device text saved on the card as ${path}`);
+  return `text saved on the card (${path})`;
+}
+// A copy of the owner profile JSON on the card, for reference: /myInfo.json (the device keeps its own in flash).
+const PROFILE_CARD_FILE = 'myInfo.json';
+async function regSaveProfileToCard(json) {
+  await cardWrite('/', PROFILE_CARD_FILE, json, 'application/json');
+  log(`register: profile JSON saved on the card as /${PROFILE_CARD_FILE}`);
+  return `profile JSON saved on the card (/${PROFILE_CARD_FILE})`;
+}
+// The server already has this device's text: make sure the card has its copy too (never overwrites a file that is there).
+async function regEnsureCardText(nodeId, text) {
+  if (!tp || !nodeId || !text) return;
+  try {
+    const r = await regSaveTextToCard(nodeId, text, true);
+    if (r) log(`register: the text was on the server but not on the card; ${r}`);
+  } catch (e) { log('register: could not copy the server text to the card: ' + e.message); }
 }
 function regStored() { try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || 'null'); } catch { return null; } }
 function openLogin() {
@@ -1444,6 +1486,8 @@ async function openRegister() {
       if (u) {
         const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
         $('regNode').textContent += ` · registered on the server to ${name} (user #${u.user_id})`;
+        // Text stored inline in the record goes onto the card if it is missing there; a stored file is fetched and handled in regTextFromServer.
+        if (typeof u.my_text === 'string' && u.my_text.trim() && !regIsFileRef(u.my_text)) regEnsureCardText(nodeId, u.my_text.trim());
         if (d.open) { regFill(regFromServer(u, regRead())); regTextPrefill(); regTextFromServer(u.my_text); $('regHint').textContent = `Loaded ${name}'s registration from the server${have ? ' (newer than the copy on the device)' : ''}.`; }
       }
     } catch (e) { log('register: server lookup for this node failed (' + e.message + ')'); }
@@ -1505,7 +1549,26 @@ $('regForm').addEventListener('submit', async e => {
         catch (err) { failed.push(`Text not stored on the server: ` + err.message); log('register: text call failed: ' + err.message); }
       } catch (err) { failed.push('Server registration failed: ' + err.message); log('register: server call failed: ' + err.message); }
     } else failed.push('Not sent to the server: connect the device first, its node id is needed');
-    const who = `${p.firstName} ${p.lastName}`;
+    // For reference, the profile JSON also goes onto the card as /myInfo.json (the text is left out, it has its own file).
+    if (tp) {
+      $('regHint').textContent = 'Saving the profile JSON on the card…';
+      try { done.push(await regSaveProfileToCard(JSON.stringify({ ...p, text: undefined }, null, 2))); }
+      catch (err) {
+        failed.push('Profile JSON not saved on the card: ' + err.message); log('register: card profile write failed: ' + err.message);
+        if (isLinkError(err)) linkTrouble(err, () => $('regSubmit').click());
+      }
+    }
+    // The same text also goes onto the card: /received_text_files/received_text.XXXX.txt (XXXX = last 4 digits of the node id).
+    if (tp && nodeId) {
+      const text = (p.text && !regIsFileRef(p.text)) ? p.text : regTextFor(nodeId);
+      $('regHint').textContent = 'Saving the device text on the card…';
+      try { done.push(await regSaveTextToCard(nodeId, text)); }
+      catch (err) {
+        failed.push('Text not saved on the card: ' + err.message); log('register: card text write failed: ' + err.message);
+        if (isLinkError(err)) linkTrouble(err, () => $('regSubmit').click());
+      }
+    }
+    const who =`${p.firstName} ${p.lastName}`;
     $('regHint').textContent = failed.length ? `${done.length ? who + ': ' + done.join(', ') + '. ' : ''}${failed.join('. ')}.` : `Registered: ${who}. Profile ${done.join(' and ')}.`;
     $('regHint').classList.toggle('err', failed.length > 0);
   } finally { $('regSubmit').disabled = false; regNodeLine(); }
