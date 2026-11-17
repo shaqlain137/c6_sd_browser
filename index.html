@@ -639,6 +639,7 @@
     <span class="brand">ESP32‑C6 SD Browser</span>
     <span class="row" style="gap:10px">
       <button id="btnRegister" style="padding:6px 14px;font-size:13px" hidden>Register device</button>
+      <span id="fwBadge" class="pill" title="Firmware on the connected C6" hidden></span>
       <span id="status" class="pill">disconnected</span>
     </span>
   </div>
@@ -858,6 +859,7 @@
         <button type="button" id="edAdd" class="secondary">Add clip…</button>
         <button type="button" id="edAddCard" class="secondary">From the card…</button>
         <button type="button" id="edAddConv" class="secondary">Converter result</button>
+        <button type="button" id="edClear" class="secondary danger" title="Remove every clip and the merged result">Clear</button>
         <input id="edFile" type="file" accept=".mjpeg,.mjpg" multiple hidden>
         <span class="ed-count" id="edCount">0 of 4 clips</span>
         <span class="ed-spacer"></span>
@@ -1174,7 +1176,15 @@ const concat = chunks => { let n = 0; for (const c of chunks) n += c.length; con
 // _sendRaw(bytes) and feeds frames/bytes into the pending request.
 // ============================================================================
 class RequestTransport {
-  constructor() { this.pending = null; }
+  constructor() { this.pending = null; this._queue = Promise.resolve(); }
+  // One operation on the link at a time. The board answers one command at a time and silently drops a
+  // command that arrives while another is running (BLE), so a second caller (the info poll during playback,
+  // the register form's card writes, a folder click) waits its turn here instead of colliding.
+  _exclusive(fn) {
+    const run = this._queue.then(fn, fn);
+    this._queue = run.catch(() => {});
+    return run;
+  }
   _newPending(cmd, resolve, reject, onProgress, timeoutMs) {
     const p = { cmd, chunks: [], bytes: 0, need: null, resolve, reject, onProgress, timer: null };
     const ms = timeoutMs || this.idleTimeoutMs;
@@ -1210,7 +1220,8 @@ class RequestTransport {
       this._afterArm?.();
     });
   }
-  async json(cmd, timeoutMs) { const u8 = await this.request(cmd, null, timeoutMs); return u8.length ? JSON.parse(dec.decode(u8)) : {}; }
+  async _jsonNow(cmd, timeoutMs) { const u8 = await this.request(cmd, null, timeoutMs); return u8.length ? JSON.parse(dec.decode(u8)) : {}; }   // inside an operation that already holds the link
+  json(cmd, timeoutMs) { return this._exclusive(async () => { const u8 = await this.request(cmd, null, timeoutMs); return u8.length ? JSON.parse(dec.decode(u8)) : {}; }); }
   async resync() {}                                     // USB overrides this: drop stale input after a failed upload
 
   info()            { return this.json('I'); }
@@ -1229,7 +1240,8 @@ class RequestTransport {
 
   // Read a whole file in windows. With onChunk the data is streamed to the caller instead of
   // collected; aborted() is checked between windows so a viewer can stop a long download.
-  async readFile(path, size, onProgress, onChunk, aborted) {
+  readFile(path, size, onProgress, onChunk, aborted) { return this._exclusive(() => this._readFile(path, size, onProgress, onChunk, aborted)); }
+  async _readFile(path, size, onProgress, onChunk, aborted) {
     const parts = []; let off = 0;
     while (off < size && !aborted?.()) {
       const n = Math.min(this.windowBytes, size - off);
@@ -1241,10 +1253,11 @@ class RequestTransport {
     return new Blob(parts);
   }
   // Upload: handshake, then one piece in flight at a time, each acked by the device.
-  async writeFile(path, blob, onProgress) {
+  writeFile(path, blob, onProgress) { return this._exclusive(() => this._writeFile(path, blob, onProgress)); }
+  async _writeFile(path, blob, onProgress) {
     const size = blob.size, chunk = this.uploadChunk;
     const mtime = Math.floor((blob.lastModified || Date.now()) / 1000);      // keep the file's original date on the card
-    const hs = await this.json(`W ${path}\t${size}\t${chunk}\t${mtime}`, 20000);
+    const hs = await this._jsonNow(`W ${path}\t${size}\t${chunk}\t${mtime}`, 20000);
     if (size === 0) return hs;
     let off = 0, last = null;
     while (off < size) {
@@ -1497,6 +1510,7 @@ function rowsNote(text, retry) {
 }
 // Forget everything shown for the previous device: another board has a different card.
 function clearBrowser() {
+  $('fwBadge').hidden = true; $('fwBadge').textContent = '';
   cwd = '/'; entries = []; viewRows = []; lastInfo = null; selected.clear(); anchor = null; updateSelection();
   $('devinfo').textContent = ''; $('preview').hidden = true; $('nowCard').hidden = true; $('btnStopDev').hidden = true;
   renderCrumbs(); rowsNote('');
@@ -1641,7 +1655,7 @@ function nodeIdOf(info) {
   return hex.length === 12 ? parseInt(hex, 16) : null;
 }
 // The node id to register under: the connected board's, else the one from the last registration.
-const regNodeId = () => (tp && nodeIdOf(lastInfo)) || regStored()?.device?.nodeId || null;
+const regNodeId = () => (tp && nodeIdOf(lastInfo)) || null;      // only the connected board: never a remembered one
 // The device's text goes to the server in a second call once the registration itself has gone through,
 // so the record exists before the server stores the text file under /files/txt/. The box is prefilled
 // with my_text_XXXX, XXXX being the last four digits of the node id; whatever is typed over it is sent
@@ -1718,8 +1732,13 @@ const TEXT_FOLDER = '/received_text_files';
 const textFileName = nodeId => `received_text.${String(nodeId).slice(-4)}.txt`;
 // Write one small file on the card, creating its folder first. With onlyIfMissing an existing file is left alone
 // and false is returned; otherwise the file is written (overwriting) and true is returned.
+async function waitIdle(ms = 20000) {
+  const until = Date.now() + ms;
+  while (busy && tp && Date.now() < until) await new Promise(r => setTimeout(r, 150));
+  return !busy;
+}
 async function cardWrite(folder, name, content, type, onlyIfMissing) {
-  if (busy) throw new Error('the device is busy, try again in a moment');
+  if (!await waitIdle()) throw new Error('the device is busy, try again in a moment');
   setBusy(true);
   const path = joinPath(folder, name);
   try {
@@ -1730,7 +1749,7 @@ async function cardWrite(folder, name, content, type, onlyIfMissing) {
     await tp.writeFile(path, new Blob([content], { type }));
     return true;
   } catch (e) { await tp.resync?.(); throw e; }
-  finally { setBusy(false); if (cwd === '/' || cwd === folder) navigate(cwd); }
+  finally { setBusy(false); if (cwd === '/' || cwd === folder) await navigate(cwd); }   // awaited: the next card write must not find the listing still running
 }
 async function regSaveTextToCard(nodeId, text, onlyIfMissing) {
   const path = joinPath(TEXT_FOLDER, textFileName(nodeId));
@@ -1770,9 +1789,8 @@ $('loginDlg').querySelector('form').addEventListener('submit', e => {
 });
 $('loginDlg').addEventListener('close', () => { if ($('loginDlg').returnValue === 'ok') openRegister(); });
 function regNodeLine() {
-  const live = tp ? nodeIdOf(lastInfo) : null, stored = regStored()?.device;
-  const id = live ?? stored?.nodeId, mac = live ? lastInfo.mac : stored?.mac;
-  $('regNode').textContent = id ? `Device node id ${id}${mac ? ` (MAC ${mac})` : ''}${live ? '' : ' · from the last registration; connect the device to refresh'}`
+  const id = tp ? nodeIdOf(lastInfo) : null, mac = id ? lastInfo.mac : null;
+  $('regNode').textContent = id ? `Device node id ${id}${mac ? ` (MAC ${mac})` : ''}`
     : tp ? 'This firmware does not report its MAC; update to 0.6.7 or newer to register with the server.'
          : 'Connect the device to get its node id for the server registration.';
   $('regTextNote').textContent = id ? `Sent to the server after the registration; an empty box sends ${regTextFor(id)}.` : '';
@@ -1983,6 +2001,7 @@ async function reconnectLink() {
 async function refreshInfo() {
   try {
     const i = await tp.info(); lastInfo = i;
+    { const b = $('fwBadge'); b.textContent = `C6 firmware ${i.fw || '?'}`; b.title = `Firmware on ${i.name || 'the C6'}${i.built ? ` · built ${i.built}` : ''}${i.board ? ` · ${i.board}` : ''}`; b.hidden = false; }
     const sd = i.sd?.ok ? `SD ${fmtSize(i.sd.used)} / ${fmtSize(i.sd.total)}` : 'SD not mounted';
     let link = '';
     if (tp.kind === 'BLE' && i.ble) {
@@ -2057,7 +2076,7 @@ async function detach() {
   const t = tp; tp = null;
   stopKeep(); linkLost = false; setBusy(false);
   for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
-  setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true; $('btnRegister').hidden = true;
+  setStatus('disconnected'); $('fwBadge').hidden = true; $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true; $('btnRegister').hidden = true;
   clearInterval(nowPoll); nowPoll = null; nowState = null;
   clearBrowser();                                 // the next device must not show this one's files
   if (t) await t.disconnect();
@@ -3320,6 +3339,17 @@ function edRemove(id) {
   if (ed.sel === id) ed.sel = ed.clips[Math.min(i, ed.clips.length - 1)]?.id ?? null;
   log(`editor: removed ${c.name}`); edStructure();
 }
+// Clear: every clip, the selection, the playhead and any merged result go; the size/fit settings stay.
+function edClearAll() {
+  if (ed.merging || ed.loading) return;
+  if (!ed.clips.length && !ed.result) return;
+  if (ed.clips.length && !confirm(`Remove all ${ed.clips.length} clip${ed.clips.length > 1 ? 's' : ''} from the editor?`)) return;
+  edPause();
+  for (const c of ed.clips) c.thumbs.forEach(t => t.bmp.close());
+  ed.clips = []; ed.sel = null; ed.head = 0; edClearCache();
+  $('edName').value = ''; $('edProgress').hidden = true;
+  log('editor: cleared'); edStructure();
+}
 function edMove(id, d) {
   const i = ed.clips.findIndex(c => c.id === id), j = i + d; if (i < 0 || j < 0 || j >= ed.clips.length) return;
   [ed.clips[i], ed.clips[j]] = [ed.clips[j], ed.clips[i]]; edStructure();
@@ -3601,6 +3631,7 @@ function edUpdateButtons() {
   $('edAddCard').disabled = full || ed.merging || loading || !tp || busy;
   $('edAddConv').disabled = full || ed.merging || loading || !conv.result;
   $('edMerge').disabled = !n || ed.merging || loading;
+  $('edClear').disabled = (!n && !ed.result) || ed.merging || loading;
   for (const id of ['edToStart', 'edPrev', 'edPlay', 'edNext', 'edToEnd']) $(id).disabled = !n;
   $('edFps').disabled = ed.merging; $('edName').disabled = ed.merging;
   $('edUpload').disabled = !tp || busy || !ed.result;
@@ -3772,6 +3803,7 @@ function edPickUpdate() {
   $('edCardAdd').disabled = !n; $('edCardAdd').textContent = n ? `Add selected (${n})` : 'Add selected';
   $('edCardNote').textContent = `Tick up to ${room} clip${room === 1 ? '' : 's'} from /Render and /mjpeg. ${n} selected.`;
 }
+$('edClear').onclick = edClearAll;
 $('edAddCard').onclick = async () => { if (!tp || busy) return; edPick.clear(); $('edCardDlg').showModal(); await edListCard(); };
 async function edListCard() {
   const box = $('edCardList'); box.innerHTML = '<div class="empty">Reading the card…</div>'; edPickUpdate(); edThumbReset();
