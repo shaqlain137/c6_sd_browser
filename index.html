@@ -87,6 +87,10 @@
     position: relative; background: var(--card); isolation: isolate;
     box-shadow: var(--ctl-rim), 0 0 0 1px var(--edge), var(--glass-shadow);
   }
+  /* A modal dialog must stay fixed to the viewport (the browser's own default). The recipe above sets position:
+     relative for the bevel layers, which pulled an open dialog into the page flow: showing the player or any
+     other dialog then scrolled the whole page to the top. Fixed is also a containing block for those layers. */
+  dialog:modal { position: fixed; }
   /* Only the floating layers blur what is under them: they sit over text. Cards sit over the soft wash, which
      needs no blur, and this keeps the biggest surfaces cheap to scroll on a modest machine. */
   .nav .in, dialog, #rowMenu { -webkit-backdrop-filter: var(--pane-filter); backdrop-filter: var(--pane-filter); }
@@ -153,6 +157,14 @@
   .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .6; }
   .pill.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
   .pill.ok::before { opacity: 1; }
+  .pill.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+  .pill.warn::before { opacity: 1; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  /* Shown under the header while the link is lost and the user chose to keep it: reconnect now or give up. */
+  .linkbar { max-width: 980px; margin: 8px auto 0; padding: 8px 14px; border-radius: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+             background: color-mix(in srgb, var(--warn) 14%, var(--card-strong)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--warn) 45%, transparent); font-size: 13px; }
+  .linkbar span { flex: 1 1 220px; }
+  .linkbar button { padding: 5px 12px; font-size: 13px; }
   #caps { margin-top: 18px; }
   #caps div { display: inline-block; margin: 0 10px; }
   .filters { margin-bottom: 12px; }
@@ -271,6 +283,122 @@
   #cvWarn.warn { color: var(--warn); } #cvWarn.err { color: var(--err); }
   #convCard.drop { outline: 2px dashed var(--accent); outline-offset: -8px; }
   details.sub summary { font-size: 14px; color: var(--muted); }
+
+  /* ---- Clip editor: monitor, clips panel, timeline, cut list. Same glass as the rest of the portal. ---- */
+  .ed-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .ed-toolbar button { padding: 8px 16px; font-size: 14px; }
+  .ed-spacer { flex: 1; }
+  .ed-count { font-size: 13px; color: var(--muted); padding: 0 8px; font-variant-numeric: tabular-nums; }
+  .ed-inline { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .ed-inline select { width: auto; padding: 6px 12px; font-size: 13px; }
+  .ed-load { margin: 0 0 14px; padding: 10px 14px 12px; border-radius: 14px; background: var(--fill-2); box-shadow: 0 0 0 1px var(--line); }
+  .ed-load-row { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: var(--muted); }
+  .ed-load-row span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-load-row b { color: var(--fg); font-weight: 600; }
+  .ed-group { display: flex; justify-content: space-between; gap: 10px; padding: 9px 14px; font-size: 11px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--fill); border-bottom: 1px solid var(--line); }
+  .ed-group span:first-child { text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .picklist .item.pick { gap: 12px; padding: 8px 12px; }
+  #edCardList { max-height: min(440px, 56vh); }
+  .ed-pthumb { position: relative; flex: none; width: 44px; height: 64px; border-radius: 8px; overflow: hidden; background: #0b0b0d center / contain no-repeat; box-shadow: 0 0 0 1px var(--line);
+               display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.7); font-size: 9px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .ed-pthumb.manual { cursor: pointer; }
+  .ed-pthumb.manual:hover { color: #fff; box-shadow: 0 0 0 2px var(--accent); }
+  .ed-pthumb.none::before { content: '🎞'; font-size: 18px; opacity: .55; }
+  .ed-pthumb.loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%); animation: edshim 1.1s linear infinite; }
+  @keyframes edshim { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+  .ed-pname { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .ed-pname b { font-weight: 600; font-size: 14px; word-break: break-all; }
+  .ed-pname small { color: var(--muted); font-size: 12px; }
+  .ed-pplay { flex: none; padding: 6px 13px; font-size: 12px; }
+  .picklist .item.pick input { pointer-events: none; flex: none; }
+  .picklist .item.pick.on { background: var(--sel); }
+  .ed-grid { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 14px; align-items: start; }
+  .ed-panel { background: var(--fill-2); border-radius: 18px; padding: 14px; box-shadow: 0 0 0 1px var(--line); }
+  .ed-ptitle { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .ed-monitor { display: flex; flex-direction: column; align-items: stretch; gap: 10px; outline: none; }
+  .ed-monitor:focus-visible, .ed-tl:focus-visible { box-shadow: 0 0 0 1px var(--line), 0 0 0 4px var(--ring); }
+  .ed-screen { display: flex; justify-content: center; background: #0b0b0d; border-radius: 14px; padding: 10px; }
+  #edCanvas { background: #000; border-radius: 8px; max-width: 100%; max-height: 300px; width: auto; height: auto; object-fit: contain; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
+  .ed-time { font: 600 15px var(--mono); font-variant-numeric: tabular-nums; text-align: center; }
+  .ed-time span { color: var(--muted); font-weight: 500; }
+  .ed-now { font-size: 12px; color: var(--muted); text-align: center; min-height: 1.4em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-transport { display: flex; gap: 5px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .ed-transport button { padding: 6px 9px; font-size: 13px; min-width: 34px; }
+  .ed-transport button.play { min-width: 62px; }
+  .ed-transport label { flex: 1 0 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .ed-transport label input { width: 15px; height: 15px; }
+  .ed-slots { display: flex; flex-direction: column; gap: 8px; }
+  .ed-slot { border-radius: 14px; background: var(--fill); box-shadow: 0 0 0 1px var(--line); overflow: hidden; transition: box-shadow .25s var(--ease), background .25s var(--ease); }
+  .ed-slot.sel { background: var(--glass-2); box-shadow: 0 0 0 2px var(--c, var(--accent)); }
+  .ed-slot.empty { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; background: transparent; box-shadow: none; outline: 1.5px dashed var(--line); outline-offset: -1.5px; color: var(--muted); font-size: 13px; }
+  .ed-slot.empty:hover { background: var(--row-hover); color: var(--fg); }
+  .ed-slot.empty b { font-size: 18px; font-weight: 500; line-height: 1; }
+  .ed-slot-head { display: flex; align-items: center; gap: 9px; padding: 8px 10px; cursor: pointer; }
+  .ed-dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+  .ed-thumb { width: 22px; height: 40px; border-radius: 5px; background: #000; flex: none; box-shadow: 0 0 0 1px var(--line); }
+  .ed-slot-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ed-slot-meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ed-slot-head button { padding: 3px 8px; font-size: 11px; min-width: 0; line-height: 1.3; }
+  .ed-slot-body { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-top: 1px solid var(--line); }
+  .ed-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ed-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .ed-fields input, .ed-fields select { padding: 6px 8px; font-size: 14px; font-variant-numeric: tabular-nums; border-radius: 10px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .ed-meta2 { display: flex; align-items: flex-end; gap: 10px; }
+  .ed-meta2 label { flex: 0 0 96px; display: flex; flex-direction: column; gap: 4px; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .ed-meta2 select { padding: 6px 8px; font-size: 14px; border-radius: 10px; letter-spacing: 0; text-transform: none; font-weight: 500; }
+  .ed-info { font-size: 12px; color: var(--muted); line-height: 1.4; padding-bottom: 6px; }
+  .ed-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ed-btns button { padding: 5px 11px; font-size: 12px; }
+  .ed-strip { position: relative; height: 48px; border-radius: 10px; background: #0b0b0d; overflow: hidden; touch-action: none; user-select: none; }
+  .ed-strip canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ed-strip .shade { position: absolute; top: 0; bottom: 0; background: rgba(8,10,16,.66); pointer-events: none; }
+  .ed-strip .shade.l { left: 0; } .ed-strip .shade.r { right: 0; }
+  .ed-strip .win { position: absolute; top: 0; bottom: 0; box-shadow: inset 0 0 0 2px var(--c); pointer-events: none; }
+  .ed-h { position: absolute; top: 0; bottom: 0; width: 12px; cursor: ew-resize; background: var(--c); display: flex; align-items: center; justify-content: center; touch-action: none; z-index: 3; }
+  .ed-h::after { content: ''; width: 2px; height: 18px; border-radius: 1px; background: rgba(255,255,255,.92); }
+  .ed-h.l { border-radius: 8px 0 0 8px; } .ed-h.r { border-radius: 0 8px 8px 0; }
+  .ed-h:hover { filter: brightness(1.12); }
+  .ed-tlhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 0 8px; }
+  .ed-tlhead .ed-ptitle { margin: 0; }
+  .ed-zoom { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .ed-zoom input { width: 110px; }
+  .ed-tl { position: relative; border-radius: 16px; background: var(--fill-2); box-shadow: 0 0 0 1px var(--line); outline: none; }
+  .ed-tl-scroll { overflow-x: auto; overflow-y: hidden; border-radius: 16px; scrollbar-width: thin; }
+  .ed-tl-inner { position: relative; height: 134px; min-width: 100%; }
+  .ed-ruler { position: absolute; left: 0; right: 0; top: 0; height: 28px; border-bottom: 1px solid var(--line); cursor: pointer; touch-action: none; }
+  .ed-tick { position: absolute; bottom: 0; width: 1px; height: 6px; background: var(--line); pointer-events: none; }
+  .ed-tick.major { height: 14px; background: color-mix(in srgb, var(--fg) 34%, transparent); }
+  .ed-tick span { position: absolute; bottom: 14px; left: 4px; font: 10px var(--mono); color: var(--muted); white-space: nowrap; }
+  .ed-track { position: absolute; left: 0; right: 0; top: 40px; height: 80px; }
+  .ed-empty { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 18px; color: var(--muted); font-size: 13px; pointer-events: none; }
+  .ed-block { position: absolute; top: 0; height: 80px; border-radius: 10px; overflow: hidden; background: #0b0b0d; box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 65%, transparent); cursor: grab; touch-action: none; user-select: none; }
+  .ed-block.sel { box-shadow: 0 0 0 2px var(--c), 0 8px 20px color-mix(in srgb, var(--c) 38%, transparent); z-index: 2; }
+  .ed-block.drag { cursor: grabbing; opacity: .88; z-index: 6; }
+  .ed-block canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .82; }
+  .ed-block .bar { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--c); pointer-events: none; }
+  .ed-block .lbl { position: absolute; left: 14px; right: 14px; bottom: 5px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .ed-block .ed-h { width: 10px; }
+  .ed-dropmark { position: absolute; top: -4px; height: 88px; width: 3px; margin-left: -1px; border-radius: 2px; background: var(--accent); box-shadow: 0 0 0 3px var(--ring); z-index: 7; pointer-events: none; }
+  .ed-playhead { position: absolute; top: 0; bottom: 0; width: 0; z-index: 5; pointer-events: none; }
+  .ed-playhead::before { content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 2px; background: var(--err); }
+  .ed-playhead::after { content: ''; position: absolute; left: -6px; top: 0; width: 12px; height: 12px; background: var(--err); clip-path: polygon(0 0, 100% 0, 50% 100%); }
+  .ed-hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 1.5em; }
+  .ed-hint.warn { color: var(--warn); }
+  table.ed-cut { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .ed-cut th { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 4px 10px 8px; border-bottom: 1px solid var(--line); }
+  .ed-cut td { padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  .ed-cut .r { text-align: right; }
+  .ed-cut tbody tr { cursor: pointer; transition: background .1s; }
+  .ed-cut tbody tr:hover { background: var(--row-hover); }
+  .ed-cut tbody tr.sel { background: var(--sel); }
+  .ed-cut td .ed-dot { display: inline-block; margin-right: 8px; vertical-align: 0; }
+  .ed-cut td small { color: var(--muted); margin-left: 6px; font-size: 11px; }
+  .ed-cut tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--line); padding-top: 11px; }
+  .ed-cut .none { color: var(--muted); text-align: center; padding: 18px; }
+  .ed-sum { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .ed-sum b { color: var(--fg); font-variant-numeric: tabular-nums; }
+  #edCard.drop { outline: 2px dashed var(--accent); outline-offset: -8px; }
+  @media (max-width: 820px) { .ed-grid { grid-template-columns: 1fr; } .ed-monitor { max-width: 320px; margin: 0 auto; width: 100%; } }
 
   /* ---- iPod-style controller for playback on the board ---- */
   .ipod { width: 292px; max-width: 100%; margin: 0 auto; padding: 22px 22px 26px; border-radius: 36px; display: flex; flex-direction: column; gap: 22px; align-items: center;
@@ -514,6 +642,11 @@
       <span id="status" class="pill">disconnected</span>
     </span>
   </div>
+  <div class="linkbar" id="linkBar" hidden>
+    <span id="linkBarMsg"></span>
+    <button type="button" id="btnLinkNow">Reconnect now</button>
+    <button type="button" class="secondary" id="btnLinkDrop">Disconnect</button>
+  </div>
 </header>
 
 <section class="hero">
@@ -526,7 +659,7 @@
   </div>
   <div id="caps" class="tiny muted"></div>
   <p class="small muted" style="margin:14px auto 0;max-width:640px">
-    Bluetooth: pick <b>C6‑SD</b> in the chooser. Nothing to pair or install; slower for big files.
+    Bluetooth: pick <b>C6‑SD_XXXX</b> in the chooser (XXXX = the last 4 digits of the board's node id). Nothing to pair or install; slower for big files.
     USB‑C: plug the board's USB‑C port into the computer and pick the Espressif serial port. Fast and wired.
   </p>
 </section>
@@ -713,6 +846,116 @@
     </details>
   </section>
 
+  <section class="card" id="edCard">
+    <details id="edDetails">
+      <summary><h2>Clip Editor.</h2><span class="small muted">Merge up to four clips.</span></summary>
+      <p class="lead small">
+        Combine up to <b>4 MJPEG clips</b> into one file. Set where each clip <b>starts and stops</b> (by time or by dragging the handles),
+        drag the blocks on the timeline to change their order, check the result in the monitor, then merge.
+        Clips can come from this computer, from the card, or from the converter above. Everything runs in this tab.
+      </p>
+      <div class="ed-toolbar">
+        <button type="button" id="edAdd" class="secondary">Add clip…</button>
+        <button type="button" id="edAddCard" class="secondary">From the card…</button>
+        <button type="button" id="edAddConv" class="secondary">Converter result</button>
+        <input id="edFile" type="file" accept=".mjpeg,.mjpg" multiple hidden>
+        <span class="ed-count" id="edCount">0 of 4 clips</span>
+        <span class="ed-spacer"></span>
+        <label class="ed-inline">Output rate
+          <select id="edFps"><option>10</option><option>12</option><option selected>15</option><option>20</option><option>24</option><option>30</option></select> fps
+        </label>
+      </div>
+      <div class="ed-load" id="edLoad" hidden role="status" aria-live="polite">
+        <div class="ed-load-row"><span id="edLoadText" class="small"></span><b id="edLoadPct" class="tabular"></b></div>
+        <progress id="edLoadBar" max="100" value="0"></progress>
+      </div>
+      <div class="ed-grid">
+        <div class="ed-panel ed-monitor" id="edMonitor" tabindex="0" aria-label="Program monitor">
+          <div class="ed-ptitle"><span>Program</span><span id="edFrameNo" class="tabular"></span></div>
+          <div class="ed-screen"><canvas id="edCanvas" width="172" height="320"></canvas></div>
+          <div class="ed-time tabular" id="edTime">0:00.00 <span>/ 0:00.00</span></div>
+          <div class="ed-now" id="edNow">Nothing to play yet</div>
+          <div class="ed-transport">
+            <button type="button" class="secondary" id="edToStart" title="Go to the start (Home)">⏮</button>
+            <button type="button" class="secondary" id="edPrev" title="Previous frame (←)">◀︎</button>
+            <button type="button" class="play" id="edPlay" title="Play / pause (Space)">Play</button>
+            <button type="button" class="secondary" id="edNext" title="Next frame (→)">▶︎</button>
+            <button type="button" class="secondary" id="edToEnd" title="Go to the end (End)">⏭</button>
+            <label><input type="checkbox" id="edLoop"> Loop</label>
+          </div>
+        </div>
+        <div class="ed-panel">
+          <div class="ed-ptitle"><span>Clips</span><span class="tabular" id="edSlotNote"></span></div>
+          <div class="ed-slots" id="edSlots"></div>
+        </div>
+      </div>
+      <div class="ed-tlhead">
+        <div class="ed-ptitle">Timeline</div>
+        <label class="ed-zoom">Zoom <input type="range" id="edZoom" min="1" max="8" step="0.25" value="1" aria-label="Timeline zoom"></label>
+      </div>
+      <div class="ed-tl" id="edTl" tabindex="0" aria-label="Timeline">
+        <div class="ed-tl-scroll" id="edTlScroll">
+          <div class="ed-tl-inner" id="edTlInner">
+            <div class="ed-ruler" id="edRuler"></div>
+            <div class="ed-track" id="edTrack"></div>
+            <div class="ed-playhead" id="edPlayhead"></div>
+          </div>
+        </div>
+      </div>
+      <div class="ed-hint" id="edHint">Click the ruler to place the playhead · drag a block to reorder · drag its edges to trim · Space plays · ← → step a frame · I / O set start / stop · Delete removes the selected clip.</div>
+
+      <div class="ed-ptitle" style="margin:18px 0 8px"><span>Cut list</span></div>
+      <table class="ed-cut">
+        <thead><tr><th style="width:34px">#</th><th>Clip</th><th class="r">Start</th><th class="r">Stop</th><th class="r">Duration</th><th class="r">Frames</th><th class="r">In output</th></tr></thead>
+        <tbody id="edCut"></tbody>
+        <tfoot id="edCutFoot"></tfoot>
+      </table>
+      <div class="ed-sum" id="edSum"></div>
+
+      <div class="ed-ptitle" style="margin:20px 0 8px"><span>Output</span></div>
+      <div class="row" style="align-items:flex-end">
+        <label class="field" style="flex:2 1 300px">Resolution <select id="edSize"></select></label>
+        <label class="field" style="flex:1 1 220px">Fit when a clip is another size
+          <select id="edFit"><option value="crop">Crop to fill (keeps proportions)</option><option value="pad">Letterbox (black bars)</option><option value="stretch">Stretch to fill</option></select>
+        </label>
+      </div>
+      <div class="row" id="edCustomWrap" style="margin-top:10px" hidden>
+        <label class="field" style="flex:1">Width (px)<input id="edW" type="number" min="16" max="1024" step="2" value="320"></label>
+        <label class="field" style="flex:1">Height (px)<input id="edH" type="number" min="16" max="1024" step="2" value="240"></label>
+      </div>
+      <label class="field" id="edSwapWrap" style="flex-direction:row;align-items:center;gap:8px;margin-top:10px" hidden><input id="edSwap" type="checkbox"> Landscape: swap width and height</label>
+      <div class="small muted" id="edSizeNote" style="margin-top:8px"></div>
+      <label class="field" id="edMatchWrap" style="flex-direction:row;align-items:center;gap:8px;margin-top:14px" hidden>
+        <input id="edMatch" type="checkbox" checked>
+        <span id="edMatchText"></span>
+      </label>
+      <div class="row" style="margin-top:18px">
+        <label class="field" style="flex:1 1 240px">Output name<span class="row"><input id="edName" type="text" autocomplete="off" spellcheck="false" placeholder="merged" style="flex:1"><span class="muted">.mjpeg</span></span></label>
+        <button type="button" id="edMerge" disabled>Merge clips</button>
+        <span id="edStatus" class="small muted"></span>
+      </div>
+      <progress id="edProgress" max="100" value="0" style="margin-top:10px" hidden></progress>
+      <div id="edResult" style="margin-top:20px" hidden>
+        <div class="conv-grid">
+          <div>
+            <table class="stats"><tbody id="edStats"></tbody></table>
+            <div id="edWarn" class="small" style="margin-top:8px"></div>
+            <div class="row" style="margin-top:14px">
+              <button type="button" id="edResPlay" class="secondary">Play here</button>
+              <button type="button" id="edDownload" class="secondary">Download .mjpeg</button>
+              <button type="button" id="edUpload">Save to /Render on the card</button>
+            </div>
+            <div id="edUpWrap" style="margin-top:10px" hidden>
+              <div id="edUpText" class="small muted" style="margin-bottom:6px"></div>
+              <progress id="edUpProgress" max="100" value="0"></progress>
+            </div>
+          </div>
+          <div class="conv-preview"><div class="small muted">First frame of the result</div><img id="edFirst" alt="first frame" style="background:#000;border-radius:12px;max-width:100%;max-height:320px;box-shadow:0 0 0 1px var(--line)"></div>
+        </div>
+      </div>
+    </details>
+  </section>
+
   <section class="card">
     <div class="card-head" style="margin-bottom:10px">
       <span class="small muted">Log</span>
@@ -803,11 +1046,24 @@
 </dialog>
 
 <!-- Connection trouble: shown when the link stops answering -->
+<!-- The link dropped (cable pulled, board reset, out of range): always ask, never decide for the user. -->
+<dialog id="dropDlg">
+  <form method="dialog">
+    <h2>The connection dropped.</h2>
+    <p id="dropMsg" class="small muted" style="margin:0"></p>
+    <footer>
+      <button type="button" class="secondary" id="dropDisconnect">Disconnect</button>
+      <button type="button" id="dropKeep">Keep connection</button>
+    </footer>
+  </form>
+</dialog>
+
 <dialog id="linkDlg">
   <form method="dialog">
     <h2>The connection is not responding.</h2>
     <p id="linkMsg" class="small muted" style="margin:0"></p>
     <footer>
+      <button type="button" class="secondary" id="linkDisconnect">Disconnect</button>
       <button type="button" class="secondary" id="linkDismiss">Dismiss</button>
       <button type="button" class="secondary" id="linkReload">Reload page</button>
       <button type="button" class="secondary" id="linkReconnect">Reconnect</button>
@@ -850,6 +1106,19 @@
       <button type="button" class="secondary" id="plFull">Fullscreen</button>
     </div>
   </div>
+</dialog>
+
+<!-- Clip editor: pick clips that are already on the card, from /Render and /mjpeg -->
+<dialog id="edCardDlg">
+  <form method="dialog">
+    <h2>Add clips from the card</h2>
+    <p class="small muted" id="edCardNote" style="margin:0"></p>
+    <div class="picklist" id="edCardList"></div>
+    <footer>
+      <button type="button" class="secondary" id="edCardClose">Cancel</button>
+      <button type="button" id="edCardAdd" disabled>Add selected</button>
+    </footer>
+  </form>
 </dialog>
 
 <!-- Folder picker: move / copy destination -->
@@ -1004,11 +1273,27 @@ class BleTransport extends RequestTransport {
   async connect(onDisconnect) {
     if (!navigator.bluetooth) throw new Error('Web Bluetooth is not available in this browser (use Chrome/Edge on desktop or Android).');
     this.device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC_UUID] }] });
-    this.device.addEventListener('gattserverdisconnected', () => { this._fail(new Error('BLE disconnected')); onDisconnect(); });
+    this.onDrop = onDisconnect;
+    this.device.addEventListener('gattserverdisconnected', () => this._drop('BLE disconnected'));
     await this._open();
     this.label = this.device.name || 'BLE device';
   }
+  // The link went away on its own (not through disconnect()): fail the request in flight and tell the page, once.
+  _drop(reason) {
+    if (this.closing || this._dropped) return;
+    this._dropped = true; this._fail(new Error(reason)); this.onDrop?.(reason);
+  }
+  // The page asks this repeatedly while the user keeps a lost connection: true once the board is reachable again.
+  async tryReopen() {
+    if (!this.device) throw new Error('no device to reconnect to');
+    await this._release();
+    await this._open();
+    return true;
+  }
+  // Drop our own GATT link on purpose; its disconnect event arrives a moment later and must not count as a drop.
+  async _release() { this.closing = true; try { this.device.gatt.disconnect(); } catch {} await new Promise(r => setTimeout(r, 80)); this.closing = false; }
   async _open() {
+    this._dropped = false;
     const gatt = await this.device.gatt.connect();
     const svc  = await gatt.getPrimaryService(SVC_UUID);
     this.cmd   = await svc.getCharacteristic(CMD_UUID);
@@ -1021,10 +1306,10 @@ class BleTransport extends RequestTransport {
   // Re-open the same device without the chooser (used by the connection-trouble dialog).
   async reconnect() {
     if (!this.device) throw new Error('no device to reconnect to');
-    try { this.device.gatt.disconnect(); } catch {}
+    await this._release();
     await this._open();
   }
-  async disconnect() { try { this.device?.gatt?.disconnect(); } catch {} }
+  async disconnect() { this.closing = true; try { this.device?.gatt?.disconnect(); } catch {} }
   // A command longer than one ATT packet would need the central's "long write" procedure, which not
   // every Bluetooth stack gets right. Firmware 0.4.1+ accepts commands in pieces instead: every piece
   // but the last ends with a 0x01 continuation byte.
@@ -1068,13 +1353,38 @@ class UsbTransport extends RequestTransport {
   async connect(onDisconnect) {
     if (!navigator.serial) throw new Error('Web Serial is not available in this browser (use Chrome/Edge on desktop).');
     this.port = await navigator.serial.requestPort({ filters: [{ usbVendorId: ESPRESSIF_VID }] });
-    this.port.addEventListener('disconnect', () => { this._fail(new Error('USB disconnected')); onDisconnect(); });
+    this.onDrop = onDisconnect;
+    this._watch(this.port);
     await this._open();
     const i = this.port.getInfo();
+    this.portInfo = { usbVendorId: i.usbVendorId, usbProductId: i.usbProductId };
     this.label = `USB ${i.usbVendorId?.toString(16) ?? ''}:${i.usbProductId?.toString(16) ?? ''}`;
   }
+  _watch(port) {
+    this.watched ??= new WeakSet();
+    if (this.watched.has(port)) return;
+    this.watched.add(port);
+    port.addEventListener('disconnect', () => { if (port === this.port) this._drop('USB disconnected'); });
+  }
+  // The link went away on its own (cable pulled, board reset, read error): fail the request in flight and tell the page, once.
+  _drop(reason) {
+    if (this.closing || this._dropped) return;
+    this._dropped = true; this._fail(new Error(reason)); this.onDrop?.(reason);
+  }
+  // The page asks this repeatedly while the user keeps a lost connection. A board that resets or is replugged
+  // shows up again as an already-authorised port, so no chooser is needed. True once it is open again.
+  async tryReopen() {
+    const want = this.portInfo || {};
+    const port = (await navigator.serial.getPorts()).find(p => { const i = p.getInfo(); return i.usbVendorId === want.usbVendorId && i.usbProductId === want.usbProductId; });
+    if (!port) throw new Error('the board is not on USB yet');
+    await this.disconnect();                       // release the dead handle first
+    this.port = port; this._watch(port);
+    await new Promise(r => setTimeout(r, 300));    // let the board finish enumerating
+    await this._open();
+    return true;
+  }
   async _open() {
-    this.closing = false; this.buf = new Uint8Array(0); this.pending = null;
+    this.closing = false; this._dropped = false; this.buf = new Uint8Array(0); this.pending = null;
     await this.port.open({ baudRate: 921600, bufferSize: 256 * 1024 });
     this.writer = this.port.writable.getWriter();
     this._readLoop();
@@ -1100,10 +1410,12 @@ class UsbTransport extends RequestTransport {
 
   async _readLoop() {
     this.reader = this.port.readable.getReader();
+    const reader = this.reader;
     try {
-      for (;;) { const { value, done } = await this.reader.read(); if (done) break; this._feed(value); }
-    } catch (e) { if (!this.closing) this._fail(e); }
-    finally { try { this.reader.releaseLock(); } catch {} }
+      for (;;) { const { value, done } = await reader.read(); if (done) break; this._feed(value); }
+      this._drop('USB port closed');               // the stream ended without disconnect() being asked for
+    } catch (e) { this._drop(e.message || 'USB read error'); }
+    finally { try { reader.releaseLock(); } catch {} }
   }
   _feed(chunk) {
     const p = this.pending;
@@ -1155,11 +1467,13 @@ const selected = new Set();                         // names selected in cwd
 let anchor = null;                                  // last toggled name, for shift-click ranges
 
 function setStatus(text, cls) { const s = $('status'); s.textContent = text; s.className = 'pill' + (cls ? ' ' + cls : ''); }
+let linkLost = false;                               // the link dropped and has not been resolved: every action stays inert
 function setBusy(b) {
-  busy = b;
+  busy = b || linkLost;
   for (const id of ['btnBle', 'btnUsb', 'btnRefresh', 'btnUpload', 'btnMkdir', 'selMove', 'selCopy', 'selDelete']) $(id).disabled = b;
   updateSelection();
   if (typeof refreshConv === 'function') refreshConv();
+  if (typeof edUpdateButtons === 'function') edUpdateButtons();
 }
 function showProgress(text, frac) {
   const w = $('progressWrap'); if (text == null) { w.hidden = true; return; }
@@ -1589,12 +1903,69 @@ function welcome() {
 const isLinkError = e => /timeout|disconnect|in flight|GATT|NetworkError|lost|not open|closed|port|device/i.test(e?.message || '');
 let linkRetry = null;
 function linkTrouble(e, retry) {
+  if (linkLost) return;                              // the "connection dropped" question is already on screen
   linkRetry = retry || null;
   $('linkMsg').textContent = `${tp ? tp.kind : 'The'} link stopped answering (${e.message}). The board may be busy, unplugged or out of range. Retry the action, reconnect the link, or reload the page.`;
   $('linkRetry').hidden = !retry; $('linkReconnect').hidden = !tp;
   const d = $('linkDlg'); if (!d.open) d.showModal();
 }
 $('linkDismiss').onclick = () => $('linkDlg').close();
+$('linkDisconnect').onclick = () => { $('linkDlg').close(); log('disconnected (chosen after the link stopped answering)'); detach(); };
+
+// ---------------- the link dropped: always ask whether to keep it or disconnect ----------------
+// A drop (cable pulled, board reset or repowered, out of range) is never acted on silently. The page freezes,
+// asks, and then either keeps the connection (it retries by itself and resumes in the same folder when the
+// board is back) or disconnects. While a kept connection waits, a bar under the header offers both choices.
+let linkWait = null;                                 // the retry loop of a kept connection
+function stopKeep() { if (linkWait) { clearTimeout(linkWait.timer); linkWait = null; } $('linkBar').hidden = true; }
+function onLinkDropped(t, reason) {
+  if (tp !== t || linkLost) return;                  // we ended it ourselves (Disconnect, Reconnect) or already asked
+  linkLost = true; setBusy(true);
+  clearInterval(nowPoll); nowPoll = null;
+  setStatus(`${t.kind}: connection lost`, 'warn');
+  log(`${t.kind} link lost (${reason})`);
+  const dev = lastInfo?.name ? ` to ${lastInfo.name}` : '';
+  $('dropMsg').textContent = `The ${t.kind} connection${dev} dropped (${reason}). The board may be unplugged, resetting or out of range. Keep the connection and the portal reconnects as soon as the board is back, or disconnect.`;
+  for (const d of document.querySelectorAll('dialog[open]:not(#dropDlg)')) d.close('cancel');   // anything half-done is moot now
+  const d = $('dropDlg'); if (!d.open) d.showModal();
+}
+$('dropDlg').addEventListener('cancel', e => e.preventDefault());   // Esc must not answer for the user
+$('dropDisconnect').onclick = () => { $('dropDlg').close(); log('disconnected (chosen after the link dropped)'); detach(); };
+$('dropKeep').onclick = () => { $('dropDlg').close(); if (tp && linkLost) startKeep(tp); };
+$('btnLinkNow').onclick = () => linkWait?.now();
+$('btnLinkDrop').onclick = () => { log('disconnected (chosen while waiting for the board)'); detach(); };
+function startKeep(t) {
+  stopKeep();
+  const st = linkWait = { t, timer: null, running: false, tries: 0, lastErr: '' };
+  setStatus(`${t.kind}: waiting for the board…`, 'warn');
+  $('linkBarMsg').textContent = `${t.kind} connection lost. Waiting for the board; it reconnects by itself when it is back.`;
+  $('linkBar').hidden = false;
+  log(`${t.kind}: keeping the connection, waiting for the board`);
+  const attempt = async () => {
+    if (linkWait !== st || st.running) return;
+    st.running = true; st.tries++;
+    $('btnLinkNow').disabled = true;
+    let ok = false;
+    try { ok = await t.tryReopen(); }
+    catch (e) { if (e.message !== st.lastErr) { st.lastErr = e.message; log(`${t.kind}: not back yet (${e.message})`); } }
+    st.running = false; $('btnLinkNow').disabled = false;
+    if (linkWait !== st) { if (ok) { try { await t.disconnect(); } catch {} } return; }   // disconnected while trying
+    if (ok) { stopKeep(); await resumeLink(t); } else st.timer = setTimeout(attempt, 1500);
+  };
+  st.now = () => { clearTimeout(st.timer); attempt(); };
+  st.timer = setTimeout(attempt, 600);
+}
+// The board is back: carry on in the folder the user was in.
+async function resumeLink(t) {
+  const here = cwd;
+  linkLost = false; setBusy(false);
+  setStatus(`${t.kind}: ${t.label}`, 'ok');
+  log(`${t.kind}: reconnected`);
+  await refreshInfo();
+  try { await tp.setClock(); } catch {}
+  await navigate(here);
+  if (tp && cwd !== here) await navigate('/');       // the folder is gone (card changed): fall back to the top
+}
 $('linkReload').onclick = () => location.reload();
 $('linkRetry').onclick = () => { const r = linkRetry; $('linkDlg').close(); r?.(); };
 $('linkReconnect').onclick = async () => { const r = linkRetry; $('linkDlg').close(); if (await reconnectLink()) r?.(); };
@@ -1684,6 +2055,7 @@ function devStop() { if (busy || !tp) return; runBatch([{ label: 'stop playback 
 $('btnStopDev').onclick = devStop;
 async function detach() {
   const t = tp; tp = null;
+  stopKeep(); linkLost = false; setBusy(false);
   for (const d of document.querySelectorAll('dialog[open]')) d.close('cancel');
   setStatus('disconnected'); $('btnDisc').disabled = true; $('browser').hidden = true; $('preview').hidden = true; $('btnRegister').hidden = true;
   clearInterval(nowPoll); nowPoll = null; nowState = null;
@@ -1794,6 +2166,7 @@ function renderRows(all) {
     // Everything else lives in a per-row menu so the name keeps the width.
     const more = [];
     if (canPreview && !canSheet && FEATURES.browserPlayback) more.push({ label: 'Preview', fn: () => preview(full, e.n, e.s) });
+    if (canPlay) more.push({ label: 'Add to clip editor', fn: () => edAddFromCard([{ path: full, size: e.s, name: e.n }]) });
     more.push({ label: 'Rename', fn: () => renameEntry(e) }, { label: 'Copy to…', fn: () => moveCopy('copy', [e]) }, { label: 'Move to…', fn: () => moveCopy('move', [e]) }, { label: 'Delete', fn: () => deleteEntries([e]), danger: true });
     if (hoverOk) for (const a of primaries) inline.appendChild(mk(a.label, a.fn, a.cls));
     else more.unshift(...primaries.map(a => ({ label: a.label, fn: a.fn })));   // no hover: everything in the menu
@@ -2040,13 +2413,14 @@ function pickFolder({ mode, items, title, okLabel }) {
 }
 
 // ---------------- file operations ----------------
-async function fetchBlob(path, size) {
+async function fetchBlob(path, size, onProgress) {
   const name = baseName(path), t0 = performance.now();
   showProgress(`${tp.kind}: ${name} 0 / ${fmtSize(size)}`, 0);
   try {
     const blob = await tp.readFile(path, size, got => {
       const s = (performance.now() - t0) / 1000, pk = tp.packetAvg?.();
       showProgress(`${tp.kind}: ${name} ${fmtSize(got)} / ${fmtSize(size)} · ${fmtSize(got / Math.max(s, .1))}/s${pk ? ` · ${pk} B/packet` : ''}`, size ? got / size : 0);
+      onProgress?.(got, size, got / Math.max(s, .1));
     });
     const pk = tp.packetAvg?.();
     log(`read ${name}: ${fmtSize(blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s${pk ? ` (${pk} B per BLE packet)` : ''}`);
@@ -2807,12 +3181,731 @@ $('cvUpload').onclick = async () => {
 };
 refreshConv();
 
+// ============================================================================
+// Clip editor: merge up to four MJPEG clips into one, each trimmed by start / stop / duration.
+// A raw .mjpeg carries no timing, so every clip has the frame rate it was made at; the merged
+// file is written at the output rate, repeating or skipping frames where the two differ.
+// A clip is a list of JPEG frames plus an in / out point (frame numbers, out is exclusive).
+// ============================================================================
+const ED_MAX = 4;
+const ED_COLORS = ['#0a7aff', '#1fb3c5', '#8b6fd6', '#e8893a'];
+const ED_FPS = [10, 12, 15, 20, 24, 30];
+const ed = { loading: false, clips: [], sel: null, nextId: 1, fps: 15, head: 0, playing: false, raf: null, zoom: 1, scale: 60, cache: new Map(), result: null, merging: false, showTok: 0, queued: false };
+
+const edClip = id => ed.clips.find(c => c.id === id);
+const edSelClip = () => edClip(ed.sel);
+const edDurSrc = c => (c.outF - c.inF) / c.fps;                       // seconds of source the clip uses
+const edOutN = c => Math.max(1, Math.round(edDurSrc(c) * ed.fps));    // frames it contributes at the output rate
+function edSeq() { let o = 0; return ed.clips.map(c => { const n = edOutN(c); const s = { c, o, n }; o += n; return s; }); }
+const edTotal = () => ed.clips.reduce((n, c) => n + edOutN(c), 0);
+const edSrcIndex = (c, k) => c.inF + Math.min(c.outF - c.inF - 1, Math.floor(k * c.fps / ed.fps));   // source frame shown at output frame k of the clip
+function edLocate(k) { for (const s of edSeq()) if (k < s.o + s.n) return { c: s.c, o: s.o, n: s.n, k: k - s.o, src: edSrcIndex(s.c, k - s.o) }; return null; }
+function fmtT(s) { const cs = Math.max(0, Math.round(s * 100)), m = Math.floor(cs / 6000); return `${m}:${((cs % 6000) / 100).toFixed(2).padStart(5, '0')}`; }
+const edRate = c => c.fps !== ed.fps;
+
+// ---------- reading clips ----------
+function edParse(u8) {
+  const frames = []; const n = u8.length; let i = 0;
+  while (i < n - 1) {
+    if (u8[i] !== 0xFF || u8[i + 1] !== 0xD8) { i++; continue; }
+    let j = i + 2;
+    while (j < n - 1 && !(u8[j] === 0xFF && u8[j + 1] === 0xD9)) j++;
+    if (j >= n - 1) break;                                  // a truncated last frame is dropped
+    frames.push(u8.subarray(i, j + 2)); i = j + 2;
+  }
+  return frames;
+}
+// The loading bar: on screen from the moment a clip is chosen until it is ready to edit.
+// Reading the file is the first 70 % of the bar; finding frames and making previews the rest.
+const edLoader = {
+  i: 1, n: 1, name: '',
+  begin(i, n, name) { this.i = i; this.n = n; this.name = name; $('edLoad').hidden = false; this.set('starting…', 0); },
+  set(text, frac) {
+    const pct = Math.round(Math.max(0, Math.min(1, frac)) * 100);
+    $('edLoadText').textContent = `${this.name}${this.n > 1 ? ` (${this.i} of ${this.n})` : ''}: ${text}`;
+    $('edLoadBar').value = pct; $('edLoadPct').textContent = pct + '%';
+  },
+  read(got, total, extra) { this.set(`reading ${fmtSize(got)} of ${fmtSize(total)}${extra || ''}`, 0.7 * (total ? got / total : 1)); },
+  prep(text, f) { this.set(text, 0.7 + 0.3 * f); },
+  async finish() { await new Promise(r => setTimeout(r, 350)); if (!ed.loading) $('edLoad').hidden = true; },   // linger a moment so a quick load is still seen
+};
+const edTick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r)));
+function edReadFile(f, onP) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onprogress = e => e.lengthComputable && onP(e.loaded, e.total);
+    r.onload = () => res(new Uint8Array(r.result)); r.onerror = () => rej(r.error || new Error('could not read the file'));
+    r.readAsArrayBuffer(f);
+  });
+}
+async function edAddClip(name, u8, fps, ld) {
+  if (ed.clips.length >= ED_MAX) { alert(`The editor takes up to ${ED_MAX} clips. Remove one first.`); return null; }
+  ld?.prep('finding frames', 0); await edTick();
+  const frames = edParse(u8);
+  if (!frames.length) { alert(`"${name}" has no JPEG frames. Is it a .mjpeg file?`); return null; }
+  const info = jpegInfo(frames[0]), used = new Set(ed.clips.map(c => c.color));
+  const clip = { id: ed.nextId++, color: ED_COLORS.find(c => !used.has(c)), name, frames, bytes: u8.length, fps: fps || ed.fps,
+                 w: info.width || 0, h: info.height || 0, progressive: !!info.progressive, inF: 0, outF: frames.length, thumbs: [] };
+  edPause(); ed.clips.push(clip); ed.sel = clip.id;
+  $('edDetails').open = true;
+  log(`editor: added ${name} (${frames.length} frames, ${clip.w}×${clip.h}, ${fmtSize(u8.length)})`);
+  edStructure();
+  await edMakeThumbs(clip, f => ld?.prep('preparing previews', f));
+  edPaintAll();
+  return clip;
+}
+async function edAddFiles(files) {
+  const room = ED_MAX - ed.clips.length;
+  if (!room) return alert(`The editor takes up to ${ED_MAX} clips. Remove one first.`);
+  if (files.length > room) alert(`Only ${room} more clip${room > 1 ? 's fit' : ' fits'}; the first ${room} will be added.`);
+  const list = files.slice(0, room); ed.loading = true; edUpdateButtons();
+  try {
+    for (const [i, f] of list.entries()) {
+      edLoader.begin(i + 1, list.length, f.name);
+      try { const u8 = await edReadFile(f, (g, t) => edLoader.read(g, t)); await edAddClip(f.name, u8, undefined, edLoader); }
+      catch (e) { alert(`Could not read ${f.name}:\n${e.message}`); }
+    }
+  } finally { ed.loading = false; await edLoader.finish(); edUpdateButtons(); }
+}
+// items: [{ path, size, name }] on the card, read one after the other with the loading bar following each.
+async function edAddFromCard(items) {
+  if (busy || !tp || !items.length) return;
+  const room = ED_MAX - ed.clips.length;
+  if (!room) return alert(`The editor takes up to ${ED_MAX} clips. Remove one first.`);
+  const list = items.slice(0, room); let done = 0;
+  setBusy(true); ed.loading = true; edUpdateButtons();
+  try {
+    for (const [i, it] of list.entries()) {
+      edLoader.begin(i + 1, list.length, it.name); edLoader.read(0, it.size);
+      const blob = await fetchBlob(it.path, it.size, (got, total, rate) => edLoader.read(got, total, ` · ${fmtSize(rate)}/s`));
+      edLoader.set('opening the file', 0.7);
+      await edAddClip(it.name, new Uint8Array(await blob.arrayBuffer()), undefined, edLoader); done++;
+    }
+  } catch (e) {
+    log(`editor: could not read from the card: ${e.message}`);
+    if (isLinkError(e)) linkTrouble(e, () => edAddFromCard(list.slice(done))); else alert(`Could not read the clip from the card:\n${e.message}`);
+  } finally { setBusy(false); ed.loading = false; await edLoader.finish(); edUpdateButtons(); }
+}
+// Thumbnails: a couple of dozen small frames per clip, tiled to make the filmstrips.
+async function edMakeThumbs(c, onP) {
+  const n = Math.min(24, c.frames.length), out = [];
+  for (let i = 0; i < n; i++) {
+    const f = Math.floor((i + .5) * c.frames.length / n), blob = new Blob([c.frames[f]], { type: 'image/jpeg' });
+    try { out.push({ f, bmp: await createImageBitmap(blob, { resizeHeight: 120, resizeQuality: 'low' }).catch(() => createImageBitmap(blob)) }); } catch {}
+    onP?.((i + 1) / n);
+    if (!edClip(c.id)) { out.forEach(t => t.bmp.close()); return; }          // removed meanwhile
+  }
+  c.thumbs = out;
+}
+// Draw source frames [f0, f1) as a filmstrip of tiles, w × h CSS pixels, sharp on high-density screens.
+function edPaintStrip(cv, c, f0, f1, w, h) {
+  const dpr = window.devicePixelRatio || 1, W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
+  if (cv.width !== W) cv.width = W; if (cv.height !== H) cv.height = H;
+  const g = cv.getContext('2d'); g.clearRect(0, 0, W, H);
+  if (!c.thumbs.length) return;
+  const tw = Math.max(6 * dpr, Math.round(h * ((c.w || 172) / (c.h || 320)) * dpr)), tiles = Math.ceil(W / tw);
+  for (let i = 0; i < tiles; i++) {
+    const f = f0 + Math.min(1, (i + .5) * tw / W) * (f1 - f0);
+    let best = c.thumbs[0], bd = Infinity;
+    for (const t of c.thumbs) { const d = Math.abs(t.f + .5 - f); if (d < bd) { bd = d; best = t; } }
+    g.drawImage(best.bmp, i * tw, 0, tw, H);
+  }
+}
+
+// ---------- selection, order, removal ----------
+function edSelect(id) { if (ed.sel === id) return; ed.sel = id; edRenderSlots(); edUpdateTimeline(); edRenderCut(); }
+function edRemove(id) {
+  const i = ed.clips.findIndex(c => c.id === id); if (i < 0) return;
+  edPause(); const [c] = ed.clips.splice(i, 1); c.thumbs.forEach(t => t.bmp.close()); edClearCache();
+  if (ed.sel === id) ed.sel = ed.clips[Math.min(i, ed.clips.length - 1)]?.id ?? null;
+  log(`editor: removed ${c.name}`); edStructure();
+}
+function edMove(id, d) {
+  const i = ed.clips.findIndex(c => c.id === id), j = i + d; if (i < 0 || j < 0 || j >= ed.clips.length) return;
+  [ed.clips[i], ed.clips[j]] = [ed.clips[j], ed.clips[i]]; edStructure();
+}
+// Anything that changes what would be merged makes an earlier result stale.
+function edInvalidate() { ed.result = null; $('edResult').hidden = true; $('edStatus').textContent = ''; }
+
+// ---------- refresh plumbing ----------
+function edStructure() { edInvalidate(); edRenderSlots(); edBuildTimeline(); edRefresh(); }
+function edRefresh() { edSyncSlots(); edUpdateTimeline(); edRenderCut(); edUpdateButtons(); edShowHead(); }
+function edQueueRefresh() { if (ed.queued) return; ed.queued = true; requestAnimationFrame(() => { ed.queued = false; edRefresh(); }); }
+function edPaintAll() { edUpdateTimeline(); edPaintSlots(); }
+// A trim changed (drag, field, key): keep everything consistent without rebuilding the pieces being dragged.
+function edTrimChanged(c) {
+  edInvalidate();
+  const total = edTotal(); if (ed.head >= total) ed.head = Math.max(0, total - 1);
+  edQueueRefresh();
+}
+
+// ---------- the Clips panel ----------
+function edRenderSlots() {
+  const box = $('edSlots'); box.innerHTML = '';
+  $('edSlotNote').textContent = `${ed.clips.length} / ${ED_MAX}`;
+  for (let i = 0; i < ED_MAX; i++) {
+    const c = ed.clips[i], el = document.createElement('div');
+    if (!c) {
+      el.className = 'ed-slot empty'; el.innerHTML = `<b>＋</b><span>Slot ${i + 1} is empty. Add a clip, or drop a .mjpeg file here.</span>`;
+      el.onclick = () => { if (!$('edAdd').disabled) $('edFile').click(); };
+      box.appendChild(el); continue;
+    }
+    const sel = c.id === ed.sel;
+    el.className = 'ed-slot' + (sel ? ' sel' : ''); el.dataset.id = c.id; el.style.setProperty('--c', c.color);
+    const rates = [...new Set([...ED_FPS, c.fps])].sort((a, b) => a - b);
+    el.innerHTML = `<div class="ed-slot-head">
+        <span class="ed-dot"></span><canvas class="ed-thumb"></canvas>
+        <span class="ed-slot-name" title="${escapeHtml(c.name)}">${i + 1}. ${escapeHtml(c.name)}</span>
+        <span class="ed-slot-meta"></span>
+        <button type="button" class="secondary" data-act="up" title="Move earlier" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="secondary" data-act="down" title="Move later" ${i === ed.clips.length - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="secondary danger" data-act="del" title="Remove this clip">✕</button>
+      </div>` + (sel ? `<div class="ed-slot-body">
+        <div class="ed-fields">
+          <label>Start (s)<input type="number" data-f="start" min="0" step="0.01"></label>
+          <label>Stop (s)<input type="number" data-f="stop" min="0" step="0.01"></label>
+          <label>Duration (s)<input type="number" data-f="dur" min="0" step="0.01"></label>
+        </div>
+        <div class="ed-strip"><canvas></canvas><div class="shade l"></div><div class="shade r"></div><div class="win"></div>
+          <div class="ed-h l" title="Drag to set the start"></div><div class="ed-h r" title="Drag to set the stop"></div></div>
+        <div class="ed-meta2">
+          <label>Source rate<select data-f="fps">${rates.map(r => `<option value="${r}">${r} fps</option>`).join('')}</select></label>
+          <div class="ed-info"></div>
+        </div>
+        <div class="ed-btns">
+          <button type="button" class="secondary" data-act="setin" title="Start this clip at the playhead (I)">Set start at playhead</button>
+          <button type="button" class="secondary" data-act="setout" title="Stop this clip at the playhead (O)">Set stop at playhead</button>
+          <button type="button" class="secondary" data-act="reset">Reset trim</button>
+        </div>
+      </div>` : '');
+    el.querySelector('.ed-slot-head').onclick = () => edSelect(c.id);
+    el.onclick = ev => { if (ev.target === el) edSelect(c.id); };
+    for (const b of el.querySelectorAll('[data-act]')) b.onclick = ev => { ev.stopPropagation(); edAct(c, b.dataset.act); };
+    for (const inp of el.querySelectorAll('[data-f]')) inp.addEventListener('change', () => edField(c, inp.dataset.f, inp.value, inp));
+    if (sel) {
+      for (const side of ['l', 'r']) el.querySelector(`.ed-strip .ed-h.${side}`).addEventListener('pointerdown', ev => edTrimDown(ev, c, side, () => el.querySelector('.ed-strip').clientWidth / (c.frames.length / c.fps)));
+    }
+    box.appendChild(el);
+  }
+  edSyncSlots(); edPaintSlots();
+}
+function edPaintSlots() {
+  for (const el of $('edSlots').querySelectorAll('.ed-slot[data-id]')) {
+    const c = edClip(+el.dataset.id); if (!c) continue;
+    edPaintStrip(el.querySelector('.ed-thumb'), c, 0, 1, 22, 40);
+    const strip = el.querySelector('.ed-strip canvas');
+    if (strip) edPaintStrip(strip, c, 0, c.frames.length, strip.parentElement.clientWidth, 48);
+  }
+}
+function edSyncSlots() {
+  for (const el of $('edSlots').querySelectorAll('.ed-slot[data-id]')) {
+    const c = edClip(+el.dataset.id); if (!c) continue;
+    el.querySelector('.ed-slot-meta').textContent = `${fmtT(edDurSrc(c))} · ${edOutN(c)} fr`;
+    if (c.id !== ed.sel) continue;
+    const set = (q, v) => { const i = el.querySelector(q); if (i && document.activeElement !== i) i.value = v; };
+    set('[data-f=start]', (c.inF / c.fps).toFixed(2)); set('[data-f=stop]', (c.outF / c.fps).toFixed(2));
+    set('[data-f=dur]', edDurSrc(c).toFixed(2)); set('[data-f=fps]', String(c.fps));
+    const tot = c.frames.length, a = 100 * c.inF / tot, b = 100 * c.outF / tot, S = el.querySelector('.ed-strip');
+    S.querySelector('.shade.l').style.width = a + '%'; S.querySelector('.shade.r').style.left = b + '%';
+    const win = S.querySelector('.win'); win.style.left = a + '%'; win.style.width = (b - a) + '%';
+    S.querySelector('.ed-h.l').style.left = a + '%'; S.querySelector('.ed-h.r').style.left = `calc(${b}% - 12px)`;
+    el.querySelector('.ed-info').textContent = `${tot} frames · ${c.w ? `${c.w}×${c.h}` : 'size unknown'} · ${fmtSize(c.bytes)}${edRate(c) ? ` · resampled ${c.fps}→${ed.fps} fps` : ''}`;
+  }
+}
+// Edits typed into the Start / Stop / Duration / rate fields: snap to whole frames, keep the clip valid.
+function edField(c, f, raw, inp) {
+  const v = parseFloat(raw), tot = c.frames.length;
+  if (f === 'fps') { c.fps = +raw || c.fps; }
+  else if (Number.isFinite(v)) {
+    const fr = Math.round(v * c.fps);
+    if (f === 'start') c.inF = Math.max(0, Math.min(c.outF - 1, fr));
+    else if (f === 'stop') c.outF = Math.min(tot, Math.max(c.inF + 1, fr));
+    else if (f === 'dur') c.outF = Math.min(tot, c.inF + Math.max(1, fr));
+  }
+  if (inp) inp.blur();
+  edTrimChanged(c); edSyncSlots();
+}
+function edAct(c, act) {
+  if (act === 'up') edMove(c.id, -1);
+  else if (act === 'down') edMove(c.id, 1);
+  else if (act === 'del') edRemove(c.id);
+  else if (act === 'reset') { c.inF = 0; c.outF = c.frames.length; edTrimChanged(c); }
+  else if (act === 'setin' || act === 'setout') edSetMark(act === 'setin' ? 'in' : 'out');
+}
+// Set the selected clip's start or stop at the playhead.
+function edSetMark(which) {
+  const c = edSelClip(); if (!c) return;
+  const loc = edLocate(ed.head);
+  if (!loc || loc.c !== c) { edHint('Move the playhead inside the selected clip first.', true); return; }
+  if (which === 'in') c.inF = Math.min(loc.src, c.outF - 1);
+  else c.outF = Math.max(loc.src + 1, c.inF + 1);                // the frame under the playhead stays in
+  edHint(`${which === 'in' ? 'Start' : 'Stop'} of ${c.name} set to ${fmtT((which === 'in' ? c.inF : c.outF) / c.fps)}.`);
+  edTrimChanged(c);
+}
+function edHint(text, warn) { const h = $('edHint'); h.textContent = text; h.classList.toggle('warn', !!warn); clearTimeout(edHint.t); edHint.t = setTimeout(() => { h.textContent = edHint.base; h.classList.remove('warn'); }, 4000); }
+edHint.base = $('edHint').textContent;
+
+// ---------- trimming by dragging (timeline blocks and the source strip share this) ----------
+// pxPerSec says how many pixels one second of source is wide where the handle lives.
+function edTrimDown(ev, c, side, pxPerSec) {
+  if (ev.button !== 0) return;
+  ev.preventDefault(); ev.stopPropagation();
+  const h = ev.currentTarget, x0 = ev.clientX, in0 = c.inF, out0 = c.outF;
+  h.setPointerCapture(ev.pointerId); edPause();
+  if (ed.sel !== c.id) edSelect(c.id);
+  const move = e => {
+    const df = Math.round((e.clientX - x0) / pxPerSec() * c.fps);
+    if (side === 'l') c.inF = Math.max(0, Math.min(out0 - 1, in0 + df));
+    else c.outF = Math.min(c.frames.length, Math.max(in0 + 1, out0 + df));
+    const s = edSeq().find(q => q.c === c);                          // the monitor follows the edge being moved
+    ed.head = side === 'l' ? s.o : s.o + s.n - 1;
+    edTrimChanged(c);
+  };
+  const up = () => { h.removeEventListener('pointermove', move); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); };
+  h.addEventListener('pointermove', move); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+}
+
+// ---------- the timeline ----------
+function edBuildTimeline() {
+  const track = $('edTrack'); track.innerHTML = '';
+  if (!ed.clips.length) track.innerHTML = '<div class="ed-empty">No clips yet. Add up to four; they play one after another in this order.</div>';
+  for (const c of ed.clips) {
+    const b = document.createElement('div'); b.className = 'ed-block'; b.dataset.id = c.id; b.style.setProperty('--c', c.color);
+    b.innerHTML = '<canvas></canvas><div class="bar"></div><div class="ed-h l" title="Drag to set the start"></div><div class="ed-h r" title="Drag to set the stop"></div><div class="lbl"></div>';
+    b.addEventListener('pointerdown', ev => edBlockDown(ev, c, b));
+    b.querySelector('.ed-h.l').addEventListener('pointerdown', ev => edTrimDown(ev, c, 'l', () => ed.scale));
+    b.querySelector('.ed-h.r').addEventListener('pointerdown', ev => edTrimDown(ev, c, 'r', () => ed.scale));
+    track.appendChild(b);
+  }
+}
+function edUpdateTimeline() {
+  const scroll = $('edTlScroll'), inner = $('edTlInner'), totalSec = edTotal() / ed.fps;
+  ed.scale = Math.max(4, (scroll.clientWidth - 32) / Math.max(totalSec, 6)) * ed.zoom;
+  inner.style.width = Math.max(scroll.clientWidth, Math.ceil(totalSec * ed.scale) + 48) + 'px';
+  for (const s of edSeq()) {
+    const b = $('edTrack').querySelector(`.ed-block[data-id="${s.c.id}"]`); if (!b) continue;
+    const w = s.n / ed.fps * ed.scale;
+    b.style.left = (s.o / ed.fps * ed.scale) + 'px'; b.style.width = w + 'px';
+    b.classList.toggle('sel', s.c.id === ed.sel);
+    b.querySelector('.lbl').textContent = `${ed.clips.indexOf(s.c) + 1}. ${s.c.name} · ${fmtT(s.n / ed.fps)}`;
+    edPaintStrip(b.querySelector('canvas'), s.c, s.c.inF, s.c.outF, w, 80);
+  }
+  edRuler(); edMovePlayhead();
+}
+function edRuler() {
+  const r = $('edRuler'); r.innerHTML = '';
+  const end = parseFloat($('edTlInner').style.width) / ed.scale || 0;
+  const major = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600].find(s => s * ed.scale >= 72) || 600;
+  const minor = major / 5, showMinor = minor * ed.scale >= 9;
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i * minor <= end + 1e-6; i++) {
+    const t = i * minor, isMajor = i % 5 === 0; if (!isMajor && !showMinor) continue;
+    const tk = document.createElement('div'); tk.className = 'ed-tick' + (isMajor ? ' major' : ''); tk.style.left = (t * ed.scale) + 'px';
+    if (isMajor) tk.innerHTML = `<span>${fmtT(t).replace(/\.00$/, '')}</span>`;
+    frag.appendChild(tk);
+  }
+  r.appendChild(frag);
+}
+function edMovePlayhead() {
+  const x = ed.head / ed.fps * ed.scale; $('edPlayhead').style.left = x + 'px';
+  const sc = $('edTlScroll');
+  if (ed.playing && (x < sc.scrollLeft || x > sc.scrollLeft + sc.clientWidth - 24)) sc.scrollLeft = Math.max(0, x - 40);
+}
+// Pressing a block selects it; dragging it sideways reorders; a plain click also moves the playhead there.
+function edBlockDown(ev, c, b) {
+  if (ev.button !== 0 || ev.target.closest('.ed-h')) return;
+  $('edTl').focus({ preventScroll: true });
+  b.setPointerCapture(ev.pointerId); edSelect(c.id);
+  const x0 = ev.clientX, seq = edSeq(), idx0 = ed.clips.indexOf(c), left0 = seq[idx0].o / ed.fps * ed.scale, others = seq.filter((_, i) => i !== idx0);
+  let dragging = false, to = idx0, mark = null;
+  const move = e => {
+    const dx = e.clientX - x0; if (!dragging && Math.abs(dx) < 5) return;
+    if (!dragging) { dragging = true; b.classList.add('drag'); edPause(); mark = document.createElement('div'); mark.className = 'ed-dropmark'; $('edTrack').appendChild(mark); }
+    b.style.left = Math.max(0, left0 + dx) + 'px';
+    const centre = left0 + dx + b.offsetWidth / 2;
+    to = others.filter(s => centre > (s.o + s.n / 2) / ed.fps * ed.scale).length;          // how many other blocks lie to its left
+    mark.style.left = (to === 0 ? 0 : (others[to - 1].o + others[to - 1].n) / ed.fps * ed.scale) + 'px';
+  };
+  const up = e => {
+    b.removeEventListener('pointermove', move); b.removeEventListener('pointerup', up); b.removeEventListener('pointercancel', up);
+    if (dragging) { mark?.remove(); b.classList.remove('drag'); if (to !== idx0) { ed.clips.splice(idx0, 1); ed.clips.splice(to, 0, c); edStructure(); } else edUpdateTimeline(); }
+    else if (e.type === 'pointerup') { ed.head = edHeadAtX(e.clientX); edPause(); edShowHead(); }
+  };
+  b.addEventListener('pointermove', move); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+}
+function edHeadAtX(clientX) {
+  const x = clientX - $('edTlInner').getBoundingClientRect().left;
+  return Math.max(0, Math.min(Math.max(0, edTotal() - 1), Math.round(x / ed.scale * ed.fps)));
+}
+function edSeekDrag(ev) {
+  if (ev.button !== 0) return;
+  const el = ev.currentTarget; ev.preventDefault(); el.setPointerCapture(ev.pointerId); edPause(); $('edTl').focus({ preventScroll: true });
+  const at = e => { ed.head = edHeadAtX(e.clientX); edShowHead(); };
+  at(ev);
+  const up = () => { el.removeEventListener('pointermove', at); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+  el.addEventListener('pointermove', at); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+$('edRuler').addEventListener('pointerdown', edSeekDrag);
+$('edTrack').addEventListener('pointerdown', ev => { if (ev.target === $('edTrack')) edSeekDrag(ev); });
+$('edZoom').addEventListener('input', () => { ed.zoom = +$('edZoom').value; edUpdateTimeline(); });
+$('edDetails').addEventListener('toggle', () => { if ($('edDetails').open) { edUpdateTimeline(); edPaintSlots(); } });
+{ let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => { if ($('edDetails').open) { edUpdateTimeline(); edPaintSlots(); } }, 120); }); }
+
+// ---------- cut list and totals ----------
+function edRenderCut() {
+  const body = $('edCut'), foot = $('edCutFoot'), seq = edSeq();
+  body.innerHTML = ''; foot.innerHTML = '';
+  if (!seq.length) { body.innerHTML = '<tr><td colspan="7" class="none">No clips yet.</td></tr>'; $('edSum').innerHTML = ''; return; }
+  for (const [i, s] of seq.entries()) {
+    const c = s.c, tr = document.createElement('tr'); if (c.id === ed.sel) tr.className = 'sel';
+    tr.innerHTML = `<td>${i + 1}</td><td><span class="ed-dot" style="--c:${c.color}"></span>${escapeHtml(c.name)}${edRate(c) ? `<small>${c.fps}→${ed.fps} fps</small>` : ''}</td>
+      <td class="r">${fmtT(c.inF / c.fps)}</td><td class="r">${fmtT(c.outF / c.fps)}</td><td class="r">${fmtT(s.n / ed.fps)}</td><td class="r">${s.n}</td><td class="r">${fmtT(s.o / ed.fps)}</td>`;
+    tr.onclick = () => edSelect(c.id);
+    body.appendChild(tr);
+  }
+  const total = edTotal();
+  foot.innerHTML = `<tr><td></td><td>${seq.length} file${seq.length > 1 ? 's' : ''}</td><td></td><td></td><td class="r">${fmtT(total / ed.fps)}</td><td class="r">${total}</td><td></td></tr>`;
+  let bytes = 0; for (const s of seq) for (let k = 0; k < s.n; k++) bytes += s.c.frames[edSrcIndex(s.c, k)].length;
+  $('edSum').innerHTML = `<span><b>${seq.length}</b> of ${ED_MAX} clips</span><span>Length <b>${fmtT(total / ed.fps)}</b> at ${ed.fps} fps</span>${edTarget() ? `<span>Size <b>${edTarget().w}×${edTarget().h}</b></span>` : ''}<span><b>${total}</b> frames</span><span>About <b>${fmtSize(bytes)}</b></span>`;
+}
+// ---------- output resolution ----------
+// "first" keeps the first clip's size; anything else is a fixed size every clip is brought to.
+$('edSize').innerHTML = '<option value="first" selected>Same as the first clip</option>' + $('cvSize').innerHTML;
+$('edSize').value = 'first';
+function edTarget() {
+  const v = $('edSize').value;
+  if (v === 'first') { const f = ed.clips.find(c => c.w); return f ? { w: f.w, h: f.h, first: true } : null; }
+  let [w, h] = v === 'custom' ? [Math.round(+$('edW').value), Math.round(+$('edH').value)] : v.split('x').map(Number);
+  if ($('edSwap').checked) [w, h] = [h, w];
+  return w >= 16 && h >= 16 && w <= 2048 && h <= 2048 ? { w, h, first: false } : null;
+}
+const edNeeds = (c, T) => !!T && !!c.w && (c.w !== T.w || c.h !== T.h);          // this clip must be re-encoded to reach the target
+// Where a bw × bh picture lands in a W × H frame: crop fills and trims, pad fits inside, stretch distorts.
+function edFitRect(bw, bh, W, H, fit) {
+  if (fit === 'stretch') return [0, 0, W, H];
+  const k = (fit === 'crop' ? Math.max : Math.min)(W / bw, H / bh), dw = bw * k, dh = bh * k;
+  return [(W - dw) / 2, (H - dh) / 2, dw, dh];
+}
+const edMismatch = () => { const T = edTarget(); return !!T && T.first && ed.clips.some(c => edNeeds(c, T)); };   // only the "first clip" mode asks before re-encoding
+function edSizeChanged() {
+  const v = $('edSize').value;
+  $('edCustomWrap').hidden = v !== 'custom'; $('edSwapWrap').hidden = v === 'first' || v === 'custom';
+  edInvalidate(); edRefresh();
+}
+for (const id of ['edSize', 'edFit', 'edW', 'edH', 'edSwap']) $(id).addEventListener('input', edSizeChanged);
+function edUpdateButtons() {
+  const n = ed.clips.length, full = n >= ED_MAX;
+  $('edCount').textContent = `${n} of ${ED_MAX} clips`;
+  const loading = ed.loading;
+  $('edAdd').disabled = full || ed.merging || loading;
+  $('edAddCard').disabled = full || ed.merging || loading || !tp || busy;
+  $('edAddConv').disabled = full || ed.merging || loading || !conv.result;
+  $('edMerge').disabled = !n || ed.merging || loading;
+  for (const id of ['edToStart', 'edPrev', 'edPlay', 'edNext', 'edToEnd']) $(id).disabled = !n;
+  $('edFps').disabled = ed.merging; $('edName').disabled = ed.merging;
+  $('edUpload').disabled = !tp || busy || !ed.result;
+  const mm = edMismatch(), T = edTarget(), differ = T ? ed.clips.filter(c => edNeeds(c, T)).length : 0, fitName = { crop: 'cropped to fill', pad: 'letterboxed', stretch: 'stretched' }[$('edFit').value];
+  $('edMatchWrap').hidden = !mm;
+  $('edSizeNote').textContent = !T ? (ed.clips.length ? 'Enter a width and height of 16 to 2048 pixels.' : 'With no fixed size chosen, the first clip sets the output size.')
+    : T.first ? `Output ${T.w} × ${T.h}, the size of the first clip.`
+    : differ ? `Output ${T.w} × ${T.h}. ${differ} of ${n} clip${n > 1 ? 's' : ''} ${differ > 1 ? 'are' : 'is'} another size and will be re-encoded (${fitName}); the rest are copied untouched.`
+    : n ? `Output ${T.w} × ${T.h}. Every clip is already that size, so frames are copied untouched.` : `Output ${T.w} × ${T.h}.`;
+  if (mm) $('edMatchText').textContent = `Clip sizes differ (${[...new Set(ed.clips.filter(c => c.w).map(c => `${c.w}×${c.h}`))].join(', ')}). Match every clip to the first one's size by re-encoding the others (a little quality is lost).`;
+}
+
+// ---------- the monitor ----------
+function edDecode(c, i) {
+  const key = c.id + ':' + i; let p = ed.cache.get(key);
+  if (!p) {
+    p = createImageBitmap(new Blob([c.frames[i]], { type: 'image/jpeg' })).catch(() => null); ed.cache.set(key, p);
+    if (ed.cache.size > 24) { const k = ed.cache.keys().next().value; ed.cache.get(k).then(b => b && b.close()); ed.cache.delete(k); }
+  }
+  return p;
+}
+function edClearCache() { for (const p of ed.cache.values()) p.then(b => b && b.close()); ed.cache.clear(); }
+function edDraw(bmp) {
+  const T = edTarget(), cv = $('edCanvas'), W = T?.w || bmp.width, H = T?.h || bmp.height;
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d'), [x, y, w, h] = edFitRect(bmp.width, bmp.height, W, H, $('edFit').value);
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+  try { g.drawImage(bmp, x, y, w, h); } catch {}
+}
+function edTimeLabel() {
+  const total = edTotal(), loc = total ? edLocate(ed.head) : null;
+  $('edTime').innerHTML = `${fmtT(ed.head / ed.fps)} <span>/ ${fmtT(total / ed.fps)}</span>`;
+  $('edFrameNo').textContent = total ? `frame ${ed.head + 1} / ${total}` : '';
+  $('edNow').textContent = loc ? `Clip ${ed.clips.indexOf(loc.c) + 1} · ${loc.c.name}` : 'Nothing to play yet';
+}
+async function edShowHead() {
+  const total = edTotal();
+  if (!total) { ed.head = 0; const cv = $('edCanvas'); cv.getContext('2d').clearRect(0, 0, cv.width, cv.height); edTimeLabel(); edMovePlayhead(); return; }
+  ed.head = Math.max(0, Math.min(ed.head, total - 1));
+  edTimeLabel(); edMovePlayhead();
+  const loc = edLocate(ed.head), tok = ++ed.showTok, bmp = await edDecode(loc.c, loc.src);
+  if (tok !== ed.showTok) return;                                    // a newer frame was asked for meanwhile
+  if (bmp) edDraw(bmp);
+  edPrefetch();
+}
+function edPrefetch() { const total = edTotal(); for (let i = 1; i <= 4 && ed.head + i < total; i++) { const l = edLocate(ed.head + i); if (l) edDecode(l.c, l.src); } }
+function edPlay() {
+  const total = edTotal(); if (!total || ed.playing) return;
+  if (ed.head >= total - 1) ed.head = 0;
+  ed.playing = true; $('edPlay').textContent = 'Pause';
+  let next = performance.now();
+  const step = async () => {
+    if (!ed.playing) return;
+    if (performance.now() >= next) {
+      let k = ed.head + 1; const n = edTotal();
+      if (k >= n) { if ($('edLoop').checked) k = 0; else { edPause(); return; } }
+      const loc = edLocate(k), bmp = await edDecode(loc.c, loc.src);
+      if (!ed.playing) return;
+      ed.head = k; if (bmp) edDraw(bmp); edTimeLabel(); edMovePlayhead(); edPrefetch();
+      next += 1000 / ed.fps; if (performance.now() - next > 250) next = performance.now();   // fell behind: resync
+    }
+    ed.raf = requestAnimationFrame(step);
+  };
+  edShowHead().then(() => { next = performance.now() + 1000 / ed.fps; ed.raf = requestAnimationFrame(step); });
+}
+function edPause() { ed.playing = false; cancelAnimationFrame(ed.raf); ed.raf = null; $('edPlay').textContent = 'Play'; }
+function edStep(d) { edPause(); ed.head += d; edShowHead(); }
+$('edPlay').onclick = () => ed.playing ? edPause() : edPlay();
+$('edPrev').onclick = () => edStep(-1); $('edNext').onclick = () => edStep(1);
+$('edToStart').onclick = () => { edPause(); ed.head = 0; edShowHead(); };
+$('edToEnd').onclick = () => { edPause(); ed.head = edTotal() - 1; edShowHead(); };
+// All keys are handled (or ignored) here: they must not reach the file browser's Delete and Ctrl+A.
+$('edCard').addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.target.closest('input, select, textarea, button, summary') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key;
+  if (k === ' ') { e.preventDefault(); ed.playing ? edPause() : edPlay(); }
+  else if (k === 'ArrowLeft' || k === 'ArrowRight') { e.preventDefault(); edStep((k === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 10 : 1)); }
+  else if (k === 'Home') { e.preventDefault(); $('edToStart').click(); }
+  else if (k === 'End') { e.preventDefault(); $('edToEnd').click(); }
+  else if (k === 'i' || k === 'I') edSetMark('in');
+  else if (k === 'o' || k === 'O') edSetMark('out');
+  else if ((k === 'Delete' || k === 'Backspace') && ed.sel) { e.preventDefault(); edRemove(ed.sel); }
+});
+
+// ---------- adding clips ----------
+$('edAdd').onclick = () => $('edFile').click();
+$('edFile').onchange = async () => { const files = [...$('edFile').files]; $('edFile').value = ''; await edAddFiles(files); };
+$('edAddConv').onclick = async () => {
+  const r = conv.result; if (!r) return;
+  ed.loading = true; edUpdateButtons();
+  try { edLoader.begin(1, 1, r.name); edLoader.read(0, 1); await edAddClip(r.name, new Uint8Array(await r.blob.arrayBuffer()), r.opts.fps, edLoader); }
+  finally { ed.loading = false; await edLoader.finish(); edUpdateButtons(); }
+};
+$('edFps').onchange = () => { ed.fps = +$('edFps').value; edPause(); edClearCache(); edStructure(); };
+{
+  const card = $('edCard'); let depth = 0;
+  const hasFiles = e => [...(e.dataTransfer?.types || [])].includes('Files');
+  card.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); depth++; card.classList.add('drop'); });
+  card.addEventListener('dragover',  e => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); });
+  card.addEventListener('dragleave', () => { if (--depth <= 0) { depth = 0; card.classList.remove('drop'); } });
+  card.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault(); e.stopPropagation(); depth = 0; card.classList.remove('drop');
+    edAddFiles([...e.dataTransfer.files].filter(f => /\.(mjpeg|mjpg)$/i.test(f.name)));
+  });
+}
+// Clips already on the card: /Render and /mjpeg are listed together (plus the folder you are in, if it is another one).
+// Tick as many as there are free slots, then Add.
+// Thumbnails of the clips on the card: only the first frame of each file is read (at most 64 KB), one file at a time,
+// and only for rows that scroll into view. On Bluetooth, which is slow, a row's preview loads when its thumbnail is pressed.
+// The link carries one request at a time, so the queue waits whenever the player or an add is using it.
+const edThumbCache = new Map();                                      // path|size → blob URL of the first frame, or null if it had none
+const edThumbs = { q: [], gen: 0, running: null, paused: false, obs: null };
+function edThumbReset() {
+  edThumbs.gen++; edThumbs.q = []; edThumbs.obs?.disconnect();
+  edThumbs.obs = new IntersectionObserver(list => { for (const en of list) if (en.isIntersecting) { edThumbs.obs.unobserve(en.target); edThumbEnqueue(en.target._job); } }, { root: $('edCardList') });
+}
+function edThumbShow(el, url) { el.classList.remove('loading', 'manual'); el.textContent = ''; el.onclick = null; if (url) el.style.backgroundImage = `url(${url})`; else el.classList.add('none'); }
+function edThumbAttach(el, path, size) {
+  const job = el._job = { el, path, size, key: path + '|' + size };
+  if (edThumbCache.has(job.key)) return edThumbShow(el, edThumbCache.get(job.key));
+  if (tp?.kind === 'BLE') { el.classList.add('manual'); el.textContent = 'Preview'; el.onclick = ev => { ev.stopPropagation(); el.onclick = null; el.classList.remove('manual'); el.textContent = ''; edThumbEnqueue(job); }; return; }
+  edThumbs.obs.observe(el);
+}
+function edThumbEnqueue(job) { job.el.classList.add('loading'); edThumbs.q.push(job); edThumbPump(); }
+function edFindJpeg(u8) {                                            // the first complete JPEG in the bytes so far, or null
+  let i = 0; const n = u8.length;
+  while (i < n - 1 && !(u8[i] === 0xFF && u8[i + 1] === 0xD8)) i++;
+  for (let j = i + 2; j < n - 1; j++) if (u8[j] === 0xFF && u8[j + 1] === 0xD9) return u8.subarray(i, j + 2);
+  return null;
+}
+async function edFirstFrame(path, size) {
+  let buf = new Uint8Array(0), found = null;
+  await tp.readFile(path, Math.min(size, 64 * 1024), null, u8 => {
+    const m = new Uint8Array(buf.length + u8.length); m.set(buf); m.set(u8, buf.length); buf = m;
+    found = edFindJpeg(buf);
+  }, () => !!found);
+  if (!found) throw new Error('no frame in the first 64 KB');
+  return URL.createObjectURL(new Blob([found], { type: 'image/jpeg' }));
+}
+function edThumbPump() {
+  if (edThumbs.running || edThumbs.paused || !edThumbs.q.length) return;
+  const gen = edThumbs.gen, job = edThumbs.q.shift();
+  edThumbs.running = (async () => {
+    if (!tp || busy || !$('edCardDlg').open) { if (gen === edThumbs.gen && $('edCardDlg').open) { edThumbs.q.unshift(job); await new Promise(r => setTimeout(r, 600)); } return; }   // the link is in use: try again shortly
+    setBusy(true);
+    try { const url = await edFirstFrame(job.path, job.size); edThumbCache.set(job.key, url); if (gen === edThumbs.gen) edThumbShow(job.el, url); }
+    catch (e) {
+      if (isLinkError(e)) { edThumbs.q = []; return; }               // the drop / not-responding dialogs take over
+      edThumbCache.set(job.key, null); if (gen === edThumbs.gen) edThumbShow(job.el, null);
+    }
+    finally { setBusy(false); }
+  })().finally(() => { edThumbs.running = null; if (gen === edThumbs.gen) edThumbPump(); });
+}
+// The Play button on a row: let the thumbnail in flight finish, then use the same player as "Play here".
+async function edPreviewClip(path, size) {
+  edThumbs.paused = true; await edThumbs.running;
+  await playFromCard(path, size);
+  if (!$('playerDlg').open) { edThumbs.paused = false; edThumbPump(); }      // it never opened (busy, or the link failed)
+}
+$('playerDlg').addEventListener('close', () => { edThumbs.paused = false; if ($('edCardDlg').open) edThumbPump(); });
+$('edCardDlg').addEventListener('close', () => { edThumbs.gen++; edThumbs.q = []; edThumbs.obs?.disconnect(); });
+const ED_FOLDERS = ['/Render', '/mjpeg'];
+const edPick = new Map();                                            // path → { path, size, name }, in the order ticked
+const edRoom = () => ED_MAX - ed.clips.length;
+function edPickUpdate() {
+  const n = edPick.size, room = edRoom();
+  $('edCardAdd').disabled = !n; $('edCardAdd').textContent = n ? `Add selected (${n})` : 'Add selected';
+  $('edCardNote').textContent = `Tick up to ${room} clip${room === 1 ? '' : 's'} from /Render and /mjpeg. ${n} selected.`;
+}
+$('edAddCard').onclick = async () => { if (!tp || busy) return; edPick.clear(); $('edCardDlg').showModal(); await edListCard(); };
+async function edListCard() {
+  const box = $('edCardList'); box.innerHTML = '<div class="empty">Reading the card…</div>'; edPickUpdate(); edThumbReset();
+  const folders = cwd !== '/' && !ED_FOLDERS.includes(cwd) ? [...ED_FOLDERS, cwd] : ED_FOLDERS, found = [];
+  for (const f of folders) {
+    try { const res = await tp.list(f); found.push({ f, files: (res.entries || []).filter(e => !e.d && isMjpeg(e.n)).sort((a, b) => a.n.localeCompare(b.n, undefined, { numeric: true })) }); }
+    catch (e) {
+      if (isLinkError(e)) { $('edCardDlg').close(); linkTrouble(e, null); return; }
+      found.push({ f, files: null });                                // the folder is not on the card
+    }
+  }
+  box.innerHTML = '';
+  for (const g of found) {
+    const h = document.createElement('div'); h.className = 'ed-group';
+    h.innerHTML = `<span>${escapeHtml(g.f)}${g.f === cwd && !ED_FOLDERS.includes(g.f) ? ' (the folder you are in)' : ''}</span><span>${g.files ? `${g.files.length} clip${g.files.length === 1 ? '' : 's'}` : 'folder not found'}</span>`;
+    box.appendChild(h);
+    for (const e of g.files || []) {
+      const path = joinPath(g.f, e.n), it = document.createElement('div'); it.className = 'item pick';
+      it.innerHTML = `<input type="checkbox" tabindex="-1"><span class="ed-pthumb"></span><span class="ed-pname"><b>${escapeHtml(e.n)}</b><small>${fmtSize(e.s)} · ${escapeHtml(g.f)}</small></span><button type="button" class="secondary ed-pplay" title="Play this clip to check it before choosing">▶ Play</button>`;
+      edThumbAttach(it.querySelector('.ed-pthumb'), path, e.s);
+      it.querySelector('.ed-pplay').onclick = ev => { ev.stopPropagation(); edPreviewClip(path, e.s); };
+      it.onclick = () => {
+        if (edPick.has(path)) edPick.delete(path);
+        else if (edPick.size >= edRoom()) { $('edCardNote').textContent = `Only ${edRoom()} free slot${edRoom() === 1 ? '' : 's'}: untick one first.`; return; }
+        else edPick.set(path, { path, size: e.s, name: e.n });
+        it.classList.toggle('on', edPick.has(path)); it.querySelector('input').checked = edPick.has(path); edPickUpdate();
+      };
+      box.appendChild(it);
+    }
+  }
+  if (found.every(g => !g.files?.length)) box.insertAdjacentHTML('beforeend', '<div class="empty">No .mjpeg files in these folders yet.</div>');
+}
+$('edCardAdd').onclick = async () => { const items = [...edPick.values()]; $('edCardDlg').close(); await edThumbs.running; edAddFromCard(items); };
+$('edCardClose').onclick = () => $('edCardDlg').close();
+
+// ---------- merging ----------
+// Re-encode one frame to W × H with the chosen fit, so a clip of another size can join the output.
+async function edReencode(u8, W, H, fit) {
+  const bmp = await createImageBitmap(new Blob([u8], { type: 'image/jpeg' })), cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'), [x, y, w, h] = edFitRect(bmp.width, bmp.height, W, H, fit);
+  g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.drawImage(bmp, x, y, w, h); bmp.close();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.85));
+  return new Uint8Array(await blob.arrayBuffer());
+}
+async function edMerge() {
+  if (ed.merging || !ed.clips.length) return;
+  const name = $('edName').value.trim() || 'merged';
+  if (!validName(name + '.mjpeg')) return alert('Invalid output name.');
+  edPause(); ed.merging = true; edInvalidate(); edUpdateButtons();
+  const T = edTarget();
+  if (!T && ed.clips.some(c => c.w)) { ed.merging = false; edUpdateButtons(); return alert('Enter a valid output width and height (16 to 2048 pixels).'); }
+  const t0 = performance.now(), seq = edSeq(), total = edTotal(), fit = $('edFit').value;
+  const match = !!T && (T.first ? edMismatch() && $('edMatch').checked : true), again = new Map(), parts = [];
+  let done = 0, resized = 0, max = 0, bytes = 0;
+  $('edProgress').hidden = false; $('edProgress').value = 0;
+  try {
+    for (const s of seq) for (let k = 0; k < s.n; k++) {
+      const src = edSrcIndex(s.c, k); let f = s.c.frames[src];
+      if (match && edNeeds(s.c, T)) {
+        const key = s.c.id + ':' + src; let r = again.get(key);
+        if (!r) { r = await edReencode(f, T.w, T.h, fit); again.set(key, r); resized++; }
+        f = r;
+      }
+      parts.push(f); bytes += f.length; if (f.length > max) max = f.length;
+      if (++done % 25 === 0) { $('edProgress').value = Math.round(100 * done / total); $('edStatus').textContent = `Merging… ${done} of ${total} frames`; await new Promise(r => setTimeout(r)); }
+    }
+    const blob = new Blob(parts, { type: 'video/x-motion-jpeg' }), info = jpegInfo(parts[0]);
+    ed.result = { blob, name: name + '.mjpeg', fps: ed.fps, clips: seq.length, seconds: (performance.now() - t0) / 1000, mixedSizes: edMismatch() && !match, mixedRates: ed.clips.some(edRate), resized, target: T,
+                  stats: { bytes, frames: total, max, avg: bytes / total, first: parts[0], width: info.width, height: info.height, progressive: !!info.progressive } };
+    edRenderResult();
+    $('edStatus').textContent = `Done in ${ed.result.seconds.toFixed(1)} s`;
+    edAutoSave = true;
+    log(`editor: merged ${seq.length} clip${seq.length > 1 ? 's' : ''} → ${ed.result.name}: ${total} frames, ${fmtSize(bytes)} in ${ed.result.seconds.toFixed(1)} s${resized ? ` (${resized} frames re-encoded)` : ''}`);
+  } catch (e) { $('edStatus').textContent = 'Failed: ' + e.message; log('editor: merge failed: ' + e.message); }
+  finally { ed.merging = false; $('edProgress').hidden = true; edUpdateButtons(); }
+  // The merged video belongs in /Render, where the player looks: save it there right away when the board is connected.
+  if (edAutoSave) { edAutoSave = false; if (tp && !busy) await edUpload(); else if (!tp) $('edStatus').textContent += ' · connect the board to save it to /Render'; }
+}
+let edAutoSave = false;
+function edRenderResult() {
+  const r = ed.result, s = r.stats, secs = s.frames / r.fps, limit = s.width ? maxFrameBytes(s.width, s.height) : 0;
+  $('edStats').innerHTML = [
+    ['File', `${r.name} · ${fmtSize(s.bytes)}`],
+    ['Made from', `${r.clips} clip${r.clips > 1 ? 's' : ''}`],
+    ['Frames', `${s.frames} at ${r.fps} fps · ${secs.toFixed(1)} s`],
+    ['Frame size', s.width ? `${s.width} × ${s.height}` : 'unknown'],
+    ['JPEG frame bytes', `avg ${fmtSize(s.avg)} · max ${fmtSize(s.max)}${limit ? ` · limit ${fmtSize(limit)}` : ''}`],
+    ['Data rate', `${fmtSize(s.bytes / Math.max(secs, .1))}/s from the card`],
+  ].map(([k, v]) => `<tr><td>${k}</td><td>${escapeHtml(v)}</td></tr>`).join('');
+  const warn = [];
+  if (r.mixedSizes) warn.push('The clips have different frame sizes; the player needs one size throughout. Tick the box above, or pick one output resolution, then merge again.');
+  if (limit && s.max > limit) warn.push(`Largest frame exceeds the player's ${fmtSize(limit)} read buffer; convert the source again at a higher quality number.`);
+  if (s.progressive) warn.push('Progressive JPEG detected; the player needs baseline frames.');
+  if (r.resized) warn.push(`${r.resized} frames were re-encoded to ${r.target.w} × ${r.target.h}.`);
+  const w = $('edWarn'); w.textContent = warn.length ? warn.join(' ') : 'Looks good for the player.';
+  w.className = 'small ' + (r.mixedSizes ? 'err' : warn.length ? 'warn' : '');
+  const img = $('edFirst'); if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+  img.src = s.first ? URL.createObjectURL(new Blob([s.first], { type: 'image/jpeg' })) : '';
+  $('edResult').hidden = false; edUpdateButtons();
+}
+$('edMerge').onclick = edMerge;
+$('edResPlay').hidden = !FEATURES.browserPlayback;
+$('edResPlay').textContent = FEATURES.devicePlayback ? 'Play here' : 'Play';
+$('edResPlay').onclick = () => { if (ed.result) playBlob(ed.result.name, ed.result.blob, ed.result.fps); };
+$('edDownload').onclick = () => { if (ed.result) saveBlob(ed.result.blob, ed.result.name); };
+$('edUpload').onclick = () => edUpload();
+async function edUpload() {
+  const r = ed.result; if (!r || !tp || busy) return;
+  setBusy(true);
+  try {
+    let listing;
+    try { listing = await tp.list(PLAYER_FOLDER); }
+    catch { await tp.mkdir(PLAYER_FOLDER); log(`mkdir ${PLAYER_FOLDER}: ok`); listing = { entries: [] }; }
+    const ents = listing.entries || [];
+    if (ents.some(e => e.n === r.name) && !confirm(`"${r.name}" already exists in ${PLAYER_FOLDER}. Overwrite?`)) return;
+    const videos = ents.filter(e => !e.d && /\.mjpeg$/i.test(e.n) && e.n !== r.name).length;
+    if (videos >= PLAYER_MAX_FILES && !confirm(`${PLAYER_FOLDER} already holds ${videos} videos; the player indexes at most ${PLAYER_MAX_FILES}. Upload anyway?`)) return;
+    const t0 = performance.now(); $('edUpWrap').hidden = false; $('edUpProgress').value = 0; $('edUpText').textContent = 'Uploading…';
+    await putFile(joinPath(PLAYER_FOLDER, r.name), r.blob, (sent, total) => {
+      const s = (performance.now() - t0) / 1000, pct = total ? Math.round(100 * sent / total) : 100;
+      $('edUpProgress').value = pct; $('edUpText').textContent = `Uploading ${r.name}: ${fmtSize(sent)} of ${fmtSize(total)} (${pct}%) · ${fmtSize(sent / Math.max(s, .1))}/s`;
+    });
+    $('edUpProgress').value = 100; $('edUpText').textContent = `Uploaded ${r.name} to ${PLAYER_FOLDER} · ${fmtSize(r.blob.size)} in ${((performance.now() - t0) / 1000).toFixed(1)} s`;
+  } catch (e) { $('edUpText').textContent = `Upload failed: ${e.message}`; log(`upload ${r.name} failed: ${e.message}`); if (isLinkError(e)) linkTrouble(e, () => edUpload()); else alert(`Upload of ${r.name} failed:\n${e.message}`); }
+  finally { setBusy(false); await navigate(PLAYER_FOLDER); await refreshInfo(); edUpdateButtons(); }
+}
+edStructure();
+
 // ---------------- connection buttons ----------------
 async function connectWith(Transport, statusText) {
   if (busy) return; setBusy(true); setStatus(statusText);
   const t = new Transport();
   try {
-    await t.connect(() => { log(`${t.kind} link lost`); detach(); });
+    await t.connect(reason => onLinkDropped(t, reason));   // a drop is never acted on silently: the user is asked
     log(`${t.kind} connected: ${t.label}`);
     setBusy(false); await attach(t);
   } catch (e) { setStatus('disconnected'); log(`${t.kind}: ${e.message}`); setBusy(false); try { await t.disconnect(); } catch {} }
